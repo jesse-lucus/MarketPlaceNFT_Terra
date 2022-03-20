@@ -4,4 +4,3 @@ mod msg;
 mod state;
 
 pub use msg::{};
-pub use state::Constants;
