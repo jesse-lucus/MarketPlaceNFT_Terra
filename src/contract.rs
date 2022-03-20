@@ -36,7 +36,7 @@ pub fn execute(
 fn create_order(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: OrderMsg
 ) -> Result<Response, ContractError> {
     //get owner of token id
@@ -47,12 +47,15 @@ fn create_order(
             msg: to_binary(&owner_query)?
         })).unwrap();
     
+    if response.owner != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
     let transfer_cw721_msg = Cw721ExecuteMsg::TransferNft {
         recipient: env.contract.address.to_string(),
-        token_id: msg.token_id.clone()
+        token_id: msg.token_id.clone(),
     };
     let exec_cw721_transfer = WasmMsg::Execute {
-        contract_addr: response.owner.to_string(),
+        contract_addr: info.sender.to_string(),
         msg: to_binary(&transfer_cw721_msg)?,
         funds: vec![],
     };
@@ -66,7 +69,7 @@ fn create_order(
     let order = Order {
         token_id: msg.token_id,
         nft_address: deps.api.addr_validate(msg.nft_address.as_str())?,
-        seller: deps.api.addr_validate(response.owner.as_str())?,
+        seller: deps.api.addr_validate(info.sender.as_str())?,
         price: msg.price,
         expire_at: msg.expire_at
     };
@@ -78,3 +81,4 @@ fn create_order(
         ("token_id", &order.token_id.to_string())
     ]))
 }
+
