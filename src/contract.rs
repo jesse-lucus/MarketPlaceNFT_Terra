@@ -57,13 +57,12 @@ fn create_order(
     let exec_cw721_transfer = WasmMsg::Execute {
         contract_addr: info.sender.to_string(),
         msg: to_binary(&transfer_cw721_msg)?,
-        funds: vec![],
+        funds: vec![]
     };
 
     let cw721_transfer_cosmos_msg: CosmosMsg = exec_cw721_transfer.into();
 
     let cosmos_msgs = vec![cw721_transfer_cosmos_msg];
-
 
     let id = increment_orders(deps.storage)?.to_string();
     let order = Order {

@@ -1,0 +1,1 @@
+6fd480268960baa5e44d56749891e2428d00f15565f6617c23f4d18e3c327cfa  ./target/wasm32-unknown-unknown/release/mftmx_marketplace.wasm

@@ -3,17 +3,9 @@ name = "mftmx-marketplace"
 description = "The mftmaketplace in terra network"
 version = "0.1.0"
 authors = ["coderighter2 <24811616+coderighter2@users.noreply.github.com>"]
-edition = "2021"
 license = "NFTmx"
 repository = "https://github.com/NFTmx/MarketPlaceNFT_Terra.git"
-
-exclude = [
-  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
-  "contract.wasm",
-  "hash.txt",
-]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -30,14 +22,12 @@ incremental = false
 overflow-checks = true
 
 [features]
-# for quicker tests, cargo test --lib
-# for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
-cw2 = { version = "0.13.0" } 
-cw20 = { version = "0.13.0" } 
-cw721 = { version = "0.12.0" } 
+cw2 = { version = "0.8.0" } 
+cw20 = { version = "0.8.0" } 
+cw721 = { version = "0.8.0" } 
 cosmwasm-std = { version = "0.16.0" }
 cw-storage-plus = { version = "0.8.0" } 
 integer-sqrt = "0.1.5"
@@ -45,9 +35,5 @@ schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.20" }
 protobuf = { version = "2", features = ["with-bytes"] }
-cosmwasm-bignumber = "2.2.0"
-
 [dev-dependencies]
 cosmwasm-schema = "0.16.0"
-terra-cosmwasm = { version = "2.2.0" }
-cosmwasm-storage = { version = "0.16.0" }
