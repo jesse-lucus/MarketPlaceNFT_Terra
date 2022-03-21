@@ -8,7 +8,7 @@ use cosmwasm_std::{
 };
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use crate::state::{ ORDERS, Order, increment_orders };
-use crate::msg::{ ExecuteMsg, InstantiateMsg, OrderMsg };
+use crate::msg::{ ExecuteMsg, InstantiateMsg };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -28,7 +28,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::CreateOrder(msg) => create_order(deps, env, info, msg),
+        ExecuteMsg::CreateOrder{ token_id, nft_addres, price, expire_at } => create_order(deps, env, info, token_id, nft_addres, price, expire_at),
 
     }
 }
@@ -37,13 +37,16 @@ fn create_order(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: OrderMsg
+    token_id: String,
+    nft_address: String,
+    price: u128,
+    expire_at: u128
 ) -> Result<Response, ContractError> {
     //get owner of token id
-    let owner_query = Cw721QueryMsg::OwnerOf{token_id: msg.token_id.clone(), include_expired: std::option::Option::default()};
+    let owner_query = Cw721QueryMsg::OwnerOf{token_id: token_id.clone(), include_expired: std::option::Option::default()};
     let response: OwnerOfResponse = deps.querier.query(&QueryRequest::Wasm(
         WasmQuery::Smart {
-            contract_addr: msg.nft_address.to_string(), 
+            contract_addr: nft_address.clone(), 
             msg: to_binary(&owner_query)?
         })).unwrap();
     
@@ -52,7 +55,7 @@ fn create_order(
     }
     let transfer_cw721_msg = Cw721ExecuteMsg::TransferNft {
         recipient: env.contract.address.to_string(),
-        token_id: msg.token_id.clone(),
+        token_id: token_id.clone(),
     };
     let exec_cw721_transfer = WasmMsg::Execute {
         contract_addr: info.sender.to_string(),
@@ -66,18 +69,18 @@ fn create_order(
 
     let id = increment_orders(deps.storage)?.to_string();
     let order = Order {
-        token_id: msg.token_id,
-        nft_address: deps.api.addr_validate(msg.nft_address.as_str())?,
+        token_id: token_id,
+        nft_address: deps.api.addr_validate(&nft_address)?,
         seller: deps.api.addr_validate(info.sender.as_str())?,
-        price: msg.price,
-        expire_at: msg.expire_at
+        price: price,
+        expire_at: expire_at
     };
     ORDERS.save(deps.storage, &id, &order)?;
     Ok(Response::new().add_messages(cosmos_msgs).add_attributes(vec![
         ("action", "create_order"),
         ("seller", order.seller.as_str()),
-        ("price", &msg.price.to_string()),
-        ("token_id", &order.token_id.to_string())
+        ("price", &price.to_string()),
+        ("token_id", &order.token_id)
     ]))
 }
 

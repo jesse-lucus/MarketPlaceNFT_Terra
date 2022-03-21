@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "create_order"
+      ],
+      "properties": {
+        "create_order": {
+          "type": "object",
+          "required": [
+            "expire_at",
+            "nft_addres",
+            "price",
+            "token_id"
+          ],
+          "properties": {
+            "expire_at": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "nft_addres": {
+              "type": "string"
+            },
+            "price": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "token_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}
