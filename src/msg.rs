@@ -21,7 +21,9 @@ pub struct OrderMsg {
 #[derive(Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    CreateOrder { asset_id:String, nft_address: String, price: Uint128, expire_at: Uint128 }
+    CreateOrder { asset_id:String, nft_address: String, price: Uint128, expire_at: Uint128 },
+    CancelOrder { asset_id:String, nft_address: String },
+    ExecuteOrder { asset_id:String, nft_address: String, buyer: String }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
