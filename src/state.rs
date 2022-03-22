@@ -12,7 +12,7 @@ pub struct Order {
     pub expire_at: u128
 }
 
-pub const ORDERS: Map<&str, Order> = Map::new("orders");
+pub const ORDERS: Map<(&str, &str), Order> = Map::new("orders");
 pub const ORDERS_COUNT: Item<u64> = Item::new("num_orders");
 
 pub fn num_orders(storage: &mut dyn Storage) -> StdResult<u64> {

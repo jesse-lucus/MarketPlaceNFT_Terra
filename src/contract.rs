@@ -42,7 +42,7 @@ pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractEr
 }
 
 
-fn create_order(
+pub fn create_order(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -60,6 +60,22 @@ fn create_order(
         .add_attribute("asset_id", order.asset_id)
         .add_attribute("price", order.price.to_string())
         .add_attribute("expire_at", order.expire_at.to_string())
+    )
+}
+
+pub fn cancel_order(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    asset_id: String,
+    nft_address: String
+) -> Result<Response, ContractError> {
+
+    let order = _cancel_order(deps, env, info, asset_id, nft_address).unwrap();
+    Ok(Response::new()
+        .add_attribute("action", "cancel_order")
+        .add_attribute("nft_address", order.nft_address)
+        .add_attribute("asset_id", order.asset_id)
     )
 }
 
@@ -96,7 +112,7 @@ fn _create_order(
 
     let _cosmos_msgs = vec![cw721_transfer_cosmos_msg];
 
-    let id = increment_orders(deps.storage)?.to_string();
+    // let id = increment_orders(deps.storage)?.to_string();
     let order = Order {
         asset_id: asset_id.clone(),
         nft_address: deps.api.addr_validate(&nft_address)?,
@@ -104,7 +120,48 @@ fn _create_order(
         price: price.u128(),
         expire_at: expire_at.u128()
     };
-    ORDERS.save(deps.storage, &id, &order)?;
+    ORDERS.save(deps.storage, ("asset_id", "nft_address"), &order)?;
+    Ok(order.clone())
+}
+
+fn _cancel_order(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    asset_id: String,
+    nft_address: String
+) -> Result<Order, ContractError> {
+
+    // let owner_query = Cw721QueryMsg::OwnerOf{token_id: asset_id.clone(), include_expired: std::option::Option::default()};
+    // let response: OwnerOfResponse = deps.querier.query(&QueryRequest::Wasm(
+    //     WasmQuery::Smart {
+    //         contract_addr: nft_address.clone(), 
+    //         msg: to_binary(&owner_query)?
+    //     })).unwrap();
+    
+    // if response.owner != info.sender {
+    //     return Err(ContractError::Unauthorized {});
+    // }
+
+    if !ORDERS.has(deps.storage, (&asset_id, &nft_address)) {
+        return Err(ContractError::Unauthorized {});
+    }
+    let order = ORDERS.load(deps.storage, (&asset_id, &nft_address))?;
+
+    let transfer_cw721_msg = Cw721ExecuteMsg::TransferNft {
+        recipient: order.seller.to_string(),
+        token_id: asset_id.clone(),
+    };
+    let exec_cw721_transfer = WasmMsg::Execute {
+        contract_addr: info.sender.to_string(),
+        msg: to_binary(&transfer_cw721_msg)?,
+        funds: vec![]
+    };
+
+    let cw721_transfer_cosmos_msg: CosmosMsg = exec_cw721_transfer.into();
+
+    let _cosmos_msgs = vec![cw721_transfer_cosmos_msg];
+    ORDERS.remove(deps.storage, (&asset_id, &nft_address));
     Ok(order)
 }
 
@@ -133,7 +190,7 @@ mod tests {
     }
 
     #[test]
-    fn create_order_works() {
+    fn _create_order_works() {
         let mut deps = mock_dependencies(&[]);
         let res = _create_order(
             deps.as_mut(),
@@ -145,5 +202,14 @@ mod tests {
             &Uint128::from(11223344u128)
         ).unwrap();
         assert_eq!(res.asset_id, "47850".to_string());
+
+        let cancel_res = _cancel_order(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(&"signer".to_string(), &[]),
+            "47850".to_string(),
+            "terra13rxnrpjk5l8c77zsdzzq63zmavu03hwn532wn0".to_string(),
+        ).unwrap();
+        assert_eq!(cancel_res.asset_id, "47850".to_string());
     }
 }
