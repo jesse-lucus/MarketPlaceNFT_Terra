@@ -1,30 +1,31 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{ Addr };
+use cosmwasm_std::Uint128;
 
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct InstantiateMsg {
     pub name: String,
     pub symbol: String,
-    pub decimals: u8,
+    pub decimals: Uint128,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct OrderMsg {
-    pub nft_address: Addr,
-    pub token_id: String, 
-    pub price: u128,
-    pub expire_at: u128
+    pub nft_address: String,
+    pub asset_id: String, 
+    pub price: Uint128,
+    pub expire_at: Uint128
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    CreateOrder {token_id: String, nft_addres: String, price: u128, expire_at: u128}
+    CreateOrder { asset_id:String, nft_address: String, price: Uint128, expire_at: Uint128 }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    ValidOrder { asset_id: String, nft_address: String },
 }

@@ -1,7 +1,24 @@
 # Rust build system
-target/
-artifacts/
+target
+artifacts
+schema
 
 # IDE: IntelliJ IDEA
 .idea/
 *.iml
+
+.cargo-ok
+
+# Text file backups
+**/*.rs.bk
+
+# macOS
+.DS_Store
+
+# IDEs
+*.iml
+.idea
+
+# Local testing
+bombay-instantiate.sh
+bombay-migrate.sh

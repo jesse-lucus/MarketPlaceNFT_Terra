@@ -5,7 +5,7 @@ use cw_storage_plus::{ Item, Map };
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Order {
-    pub token_id: String,
+    pub asset_id: String,
     pub nft_address: Addr,
     pub seller: Addr,
     pub price: u128,

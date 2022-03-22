@@ -3,4 +3,4 @@ mod error;
 mod msg;
 mod state;
 
-pub use msg::{ExecuteMsg, InstantiateMsg};
+pub use msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
