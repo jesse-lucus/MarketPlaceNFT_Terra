@@ -2,14 +2,15 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use cosmwasm_std::{ StdResult, Storage, Addr };
 use cw_storage_plus::{ Item, Map };
+use cosmwasm_std::Uint128;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Order {
     pub asset_id: String,
     pub nft_address: Addr,
     pub seller: Addr,
-    pub price: u128,
-    pub expire_at: u128
+    pub price: Uint128,
+    pub expire_at: Uint128
 }
 
 pub const ORDERS: Map<(&str, &str), Order> = Map::new("orders");
