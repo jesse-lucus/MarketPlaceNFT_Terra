@@ -8,7 +8,7 @@ use cosmwasm_std::{
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw20::{Cw20ExecuteMsg};
 
-use crate::state::{ ORDERS, Order };
+use crate::state::{ ORDERS, Order, BIDS};
 use crate::msg::{ ExecuteMsg, InstantiateMsg, QueryMsg };
 
 #[entry_point]
@@ -119,19 +119,19 @@ fn _create_order(
     // if response.owner != info.sender {
     //     return Err(ContractError::Unauthorized {});
     // }
-    let transfer_cw721_msg = Cw721ExecuteMsg::TransferNft {
-        recipient: env.contract.address.to_string(),
-        token_id: asset_id.clone(),
-    };
-    let exec_cw721_transfer = WasmMsg::Execute {
-        contract_addr: nft_address.clone(),
-        msg: to_binary(&transfer_cw721_msg)?,
-        funds: vec![]
-    };
+    // let transfer_cw721_msg = Cw721ExecuteMsg::TransferNft {
+    //     recipient: env.contract.address.to_string(),
+    //     token_id: asset_id.clone(),
+    // };
+    // let exec_cw721_transfer = WasmMsg::Execute {
+    //     contract_addr: nft_address.clone(),
+    //     msg: to_binary(&transfer_cw721_msg)?,
+    //     funds: vec![]
+    // };
 
-    let cw721_transfer_cosmos_msg: CosmosMsg = exec_cw721_transfer.into();
+    // let cw721_transfer_cosmos_msg: CosmosMsg = exec_cw721_transfer.into();
 
-    let _cosmos_msgs = vec![cw721_transfer_cosmos_msg];
+    // let _cosmos_msgs = vec![cw721_transfer_cosmos_msg];
 
     // let id = increment_orders(deps.storage)?.to_string();
     let order = Order {
@@ -142,7 +142,30 @@ fn _create_order(
         expire_at: expire_at
     };
     ORDERS.save(deps.storage, ("asset_id", "nft_address"), &order)?;
-    Ok(order.clone())
+    Ok(order)
+}
+
+fn _create_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    asset_id: String,
+    nft_address: String,
+    bider: String,
+    price: Uint128,
+    expire_at: Uint128
+) -> Result<Bid, ContractError> {
+    let bid = Bid {
+        asset_id: asset_id.clone(),
+        nft_address: deps.api.addr_validate(&nft_address)?,
+        bider: deps.api.addr_validate(&bider)
+        seller: deps.api.addr_validate(info.sender.as_str())?,
+        price: price,
+        expire_at: expire_at
+    };
+    BIDS.save(deps.storage, ("asset_id", "nft_address"), &order)?;
+    Ok(bid)
+
 }
 
 fn _cancel_order(
@@ -153,25 +176,20 @@ fn _cancel_order(
     nft_address: String
 ) -> Result<Order, ContractError> {
 
-    // let owner_query = Cw721QueryMsg::OwnerOf{token_id: asset_id.clone(), include_expired: std::option::Option::default()};
-    // let response: OwnerOfResponse = deps.querier.query(&QueryRequest::Wasm(
-    //     WasmQuery::Smart {
-    //         contract_addr: nft_address.clone(), 
-    //         msg: to_binary(&owner_query)?
-    //     })).unwrap();
-    
-    // if response.owner != info.sender {
-    //     return Err(ContractError::Unauthorized {});
-    // }
-
     if !ORDERS.has(deps.storage, (&asset_id, &nft_address)) {
         return Err(ContractError::Unauthorized {});
     }
     let order = ORDERS.load(deps.storage, (&asset_id, &nft_address))?;
+
+    // only seller cancel order
+    if order.seller != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
     
+    // return nft to seller
     let transfer_cw721_msg = Cw721ExecuteMsg::TransferNft {
         recipient: order.seller.to_string(),
-        token_id: asset_id.clone(),
+        token_id: order.asset_id.clone(),
     };
     let exec_cw721_transfer = WasmMsg::Execute {
         contract_addr: nft_address.to_string(),

@@ -13,5 +13,16 @@ pub struct Order {
     pub expire_at: Uint128
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct Bid {
+    pub asset_id: String,
+    pub nft_address: Addr,
+    pub seller: Addr,
+    pub bider: Addr,
+    pub price: Uint128,
+    pub expire_at: Uint128
+}
+
 pub const ORDERS: Map<(&str, &str), Order> = Map::new("orders");
+pub const BIDS: Map<(&str, &str), Order> = Map::new("bids");
 
