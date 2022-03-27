@@ -8,7 +8,7 @@ use cosmwasm_std::{
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw20::{Cw20ExecuteMsg};
 
-use crate::state::{ ORDERS, Order, BIDS};
+use crate::state::{ ORDERS, Order, BIDS, Bid };
 use crate::msg::{ ExecuteMsg, InstantiateMsg, QueryMsg };
 
 #[entry_point]
@@ -36,11 +36,11 @@ pub fn execute(
 }
 
 #[entry_point]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::ValidOrder { asset_id: _, nft_address: _ } => {
-            let out = to_binary("success OK!")?;
-            Ok(out)
+        QueryMsg::ValidOrder { asset_id, nft_address } => {
+            let order = ORDERS.load(deps.storage, (&asset_id, &nft_address))?;
+            to_binary(&order)
         }
     }
 }
@@ -55,15 +55,16 @@ pub fn create_order(
     expire_at: Uint128
 ) -> Result<Response, ContractError> {
 
-    let order = _create_order(deps, env, info, asset_id, nft_address, price, expire_at).unwrap();
-    Ok(Response::new()
-        .add_attribute("action", "create_order")
-        .add_attribute("seller", order.seller)
-        .add_attribute("nft_address", order.nft_address)
-        .add_attribute("asset_id", order.asset_id)
-        .add_attribute("price", order.price.to_string())
-        .add_attribute("expire_at", order.expire_at.to_string())
-    )
+    let res = _create_order(deps, env, info, asset_id, nft_address, price, expire_at).unwrap();
+    Ok(res)
+    // Ok(Response::new()
+    //     .add_attribute("action", "create_order")
+    //     .add_attribute("seller", order.seller)
+    //     .add_attribute("nft_address", order.nft_address)
+    //     .add_attribute("asset_id", order.asset_id)
+    //     .add_attribute("price", order.price.to_string())
+    //     .add_attribute("expire_at", order.expire_at.to_string())
+    // )
 }
 
 pub fn cancel_order(
@@ -108,7 +109,10 @@ fn _create_order(
     nft_address: String,
     price: Uint128,
     expire_at: Uint128
-) -> Result<Order, ContractError> {
+) -> Result<Response, ContractError> {
+
+    // TODO:  validation
+
     // let owner_query = Cw721QueryMsg::OwnerOf{token_id: asset_id.clone(), include_expired: std::option::Option::default()};
     // let response: OwnerOfResponse = deps.querier.query(&QueryRequest::Wasm(
     //     WasmQuery::Smart {
@@ -119,6 +123,9 @@ fn _create_order(
     // if response.owner != info.sender {
     //     return Err(ContractError::Unauthorized {});
     // }
+
+    // TODO: get NFT asset from seller
+
     // let transfer_cw721_msg = Cw721ExecuteMsg::TransferNft {
     //     recipient: env.contract.address.to_string(),
     //     token_id: asset_id.clone(),
@@ -129,20 +136,26 @@ fn _create_order(
     //     funds: vec![]
     // };
 
-    // let cw721_transfer_cosmos_msg: CosmosMsg = exec_cw721_transfer.into();
+    // let cw721_transfer_cosmos_msg: CosmosMsg = CosmosMsg::Wasm(exec_cw721_transfer);
+    // let cosmos_msgs = vec![cw721_transfer_cosmos_msg];
 
-    // let _cosmos_msgs = vec![cw721_transfer_cosmos_msg];
-
-    // let id = increment_orders(deps.storage)?.to_string();
-    let order = Order {
-        asset_id: asset_id.clone(),
-        nft_address: deps.api.addr_validate(&nft_address)?,
-        seller: deps.api.addr_validate(info.sender.as_str())?,
-        price: price,
-        expire_at: expire_at
-    };
+    // let order = Order {
+    //     asset_id: asset_id.clone(),
+    //     nft_address: deps.api.addr_validate(&nft_address)?,
+    //     seller: deps.api.addr_validate(info.sender.as_str())?,
+    //     price: price,
+    //     expire_at: expire_at
+    // };
     ORDERS.save(deps.storage, ("asset_id", "nft_address"), &order)?;
-    Ok(order)
+
+    Ok(Response::new()
+        .add_messages(cosmos_msgs)
+        .add_attribute("asset_id", order.asset_id)
+        .add_attribute("nft_address", order.nft_address)
+        .add_attribute("seller", order.seller)
+        .add_attribute("price", order.price)
+    )
+    // Ok(order)
 }
 
 fn _create_bid(
@@ -155,17 +168,17 @@ fn _create_bid(
     price: Uint128,
     expire_at: Uint128
 ) -> Result<Bid, ContractError> {
+    let order = ORDERS.load(deps.storage, (&asset_id, &nft_address))?;
     let bid = Bid {
         asset_id: asset_id.clone(),
         nft_address: deps.api.addr_validate(&nft_address)?,
-        bider: deps.api.addr_validate(&bider)
-        seller: deps.api.addr_validate(info.sender.as_str())?,
+        bider: deps.api.addr_validate(info.sender.as_str())?,
+        seller: order.seller,
         price: price,
         expire_at: expire_at
     };
-    BIDS.save(deps.storage, ("asset_id", "nft_address"), &order)?;
+    BIDS.save(deps.storage, ("asset_id", "nft_address"), &bid)?;
     Ok(bid)
-
 }
 
 fn _cancel_order(

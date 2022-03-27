@@ -24,5 +24,5 @@ pub struct Bid {
 }
 
 pub const ORDERS: Map<(&str, &str), Order> = Map::new("orders");
-pub const BIDS: Map<(&str, &str), Order> = Map::new("bids");
+pub const BIDS: Map<(&str, &str), Bid> = Map::new("bids");
 
