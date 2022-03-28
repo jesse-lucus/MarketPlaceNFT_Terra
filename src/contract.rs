@@ -3,11 +3,11 @@ use crate::error::ContractError;
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    to_binary, DepsMut, Env, MessageInfo, CosmosMsg, Response, QueryRequest, WasmMsg, WasmQuery, StdResult, Deps, Binary, Uint128
+    to_binary, DepsMut, Env, MessageInfo, CosmosMsg, Response, QueryRequest, WasmMsg, WasmQuery, StdResult, Deps, Binary, Uint128, Timestamp
 };
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw20::{Cw20ExecuteMsg};
-use cw0::Expiration;
+use cw0:: Expiration;
 
 use crate::state::{ ORDERS, Order, BIDS, Bid };
 use crate::msg::{ ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg };
@@ -345,24 +345,57 @@ mod tests {
     #[test]
     fn _create_order_works() {
         let mut deps = mock_dependencies(&[]);
+        let expiration = Expiration::AtTime(Timestamp::from_seconds(1648938996));
+
+        let price = Asset {
+            amount: Uint128::from(1u128),
+            info: AssetInfo::NativeToken {denom : "uluna".to_string()}
+        };
+
         let res = _create_order(
             deps.as_mut(),
             mock_env(),
             mock_info(&"signer".to_string(), &[]),
             "47850".to_string(),
             "terra13rxnrpjk5l8c77zsdzzq63zmavu03hwn532wn0".to_string(),
-            Uint128::from(11223344u128),
-            Uint128::from(11223344u128)
+            price,
+            expiration
         ).unwrap();
-        assert_eq!(res.token_id, "47850".to_string());
-
-        // let cancel_res = _cancel_order(
-        //     deps.as_mut(),
-        //     mock_env(),
-        //     mock_info(&"signer".to_string(), &[]),
-        //     "47850".to_string(),
-        //     "terra13rxnrpjk5l8c77zsdzzq63zmavu03hwn532wn0".to_string(),
-        // ).unwrap();
-        // assert_eq!(cancel_res.token_id, "47850".to_string());
+        assert_eq!(0, res.messages.len());
     }
+
+    #[test]
+    fn _create_bid_works() {
+        let mut deps = mock_dependencies(&[]);
+        let expiration = Expiration::AtTime(Timestamp::from_seconds(1648938996));
+
+        let price = Asset {
+            amount: Uint128::from(1u128),
+            info: AssetInfo::NativeToken {denom : "uluna".to_string()}
+        };
+
+        let order_res = _create_order(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(&"signer".to_string(), &[]),
+            "47850".to_string(),
+            "terra13rxnrpjk5l8c77zsdzzq63zmavu03hwn532wn0".to_string(),
+            price.clone(),
+            expiration.clone()
+        ).unwrap();
+        assert_eq!(0, order_res.messages.len());
+
+
+        let res = _create_bid(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(&"signer".to_string(), &[]),
+            "47850".to_string(),
+            "terra13rxnrpjk5l8c77zsdzzq63zmavu03hwn532wn0".to_string(),
+            price,
+            expiration
+        ).unwrap();
+        assert_eq!(0, res.messages.len());
+    }
+
 }
