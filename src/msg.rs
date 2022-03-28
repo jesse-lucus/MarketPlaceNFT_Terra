@@ -25,6 +25,7 @@ pub enum ExecuteMsg {
     CreateOrder { asset_id:String, nft_address: String, price: Uint128, expire_at: Expiration },
     CreateBid { asset_id:String, nft_address: String, price: Uint128, expire_at: Expiration },
     CancelOrder { asset_id:String, nft_address: String },
+    CancelBid { asset_id:String, nft_address: String },
     ExecuteOrder { asset_id:String, nft_address: String, buyer: String }
 }
 

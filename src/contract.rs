@@ -33,6 +33,7 @@ pub fn execute(
         ExecuteMsg::CreateOrder{ asset_id, nft_address, price, expire_at } => create_order(deps, env, info, asset_id, nft_address, price, expire_at),
         ExecuteMsg::CreateBid{ asset_id, nft_address, price, expire_at } => create_bid(deps, env, info, asset_id, nft_address, price, expire_at),
         ExecuteMsg::CancelOrder{ asset_id, nft_address } => cancel_order(deps, env, info, asset_id, nft_address),
+        ExecuteMsg::CancelBid{ asset_id, nft_address } => cancel_bid(deps, env, info, asset_id, nft_address),
         ExecuteMsg::ExecuteOrder{ asset_id, nft_address, buyer } => execute_order(deps, env, info, asset_id, nft_address, buyer)
     }
 }
@@ -109,6 +110,17 @@ pub fn create_bid(
     Ok(res)
 }
 
+pub fn cancel_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    asset_id: String,
+    nft_address: String
+) -> Result<Response, ContractError> {
+
+    let res = _cancel_bid(deps, env, info, asset_id, nft_address).unwrap();
+    Ok(res)
+}
 
 fn _create_order(
     deps: DepsMut,
@@ -162,7 +174,6 @@ fn _create_bid(
     if order.price > price {
         return Err(ContractError::MinPrice { min_bid_amount: price })
     }
-
     if !BIDS.has(deps.storage, (&asset_id, &nft_address)) {
         let bid = Bid {
             asset_id: asset_id.clone(),
@@ -183,6 +194,8 @@ fn _create_bid(
         BIDS.save(deps.storage, (&asset_id, &nft_address), &bid)?;
     }
 
+    //TODO price to Escrow - should be performed from frontend
+
     Ok(Response::new()
         // .add_messages(cosmos_msgs)
         .add_attribute("action", "create_bid")
@@ -190,6 +203,26 @@ fn _create_bid(
         .add_attribute("nft_address", nft_address)
         .add_attribute("bidder", info.sender.to_string())
         .add_attribute("price", price)
+    )
+}
+
+fn _cancel_bid(
+    deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    asset_id: String,
+    nft_address: String
+) -> Result<Response, ContractError> {
+
+
+    //TODO refund escrow money to bidder
+
+    BIDS.remove(deps.storage, (&asset_id, &nft_address));
+    Ok(Response::new()
+    // .add_messages(cosmos_msgs)
+        .add_attribute("action", "cancel_bid")
+        .add_attribute("asset_id", asset_id)
+        .add_attribute("nft_address", nft_address)
     )
 }
 
@@ -201,9 +234,6 @@ fn _cancel_order(
     nft_address: String
 ) -> Result<Response, ContractError> {
 
-    // if !ORDERS.has(deps.storage, (&asset_id, &nft_address)) {
-    //     return Err(ContractError::Unauthorized {});
-    // }
     let order = ORDERS.load(deps.storage, (&asset_id, &nft_address))?;
 
     // only seller cancel order
@@ -211,8 +241,10 @@ fn _cancel_order(
         return Err(ContractError::Unauthorized {});
     }
 
-    //todo refund bid
-
+    if BIDS.has(deps.storage, (&asset_id, &nft_address)) {
+        //TODO refund escrow money to bidder
+        BIDS.remove(deps.storage, (&asset_id, &nft_address));
+    }
     //return nft to seller
     let cosmos_msgs: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: order.nft_address.to_string(),
