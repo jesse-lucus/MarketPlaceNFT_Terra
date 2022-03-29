@@ -26,7 +26,7 @@ pub enum ExecuteMsg {
     CreateBid { token_id:String, nft_address: String, price: Asset, expire_at: Expiration },
     CancelOrder { token_id:String, nft_address: String },
     CancelBid { token_id:String, nft_address: String },
-    ExecuteOrder { token_id:String, nft_address: String, buyer: String }
+    ExecuteOrder { token_id:String, nft_address: String }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

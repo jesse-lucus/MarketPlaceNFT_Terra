@@ -12,7 +12,10 @@ pub enum ContractError {
 
     #[error("Given expiration is already expired or order is already expired")]
     Expired {},
-    
+
     #[error("You must bid higher or equal to {} (min bid amount)", min_bid_amount)]
     MinPrice { min_bid_amount: Uint128 },  
+
+    #[error("no bid for order")]
+    NoBid {},
 }

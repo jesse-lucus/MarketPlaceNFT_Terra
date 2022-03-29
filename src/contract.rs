@@ -35,7 +35,7 @@ pub fn execute(
         ExecuteMsg::CreateBid{ token_id, nft_address, price, expire_at } => create_bid(deps, env, info, token_id, nft_address, price, expire_at),
         ExecuteMsg::CancelOrder{ token_id, nft_address } => cancel_order(deps, env, info, token_id, nft_address),
         ExecuteMsg::CancelBid{ token_id, nft_address } => cancel_bid(deps, env, info, token_id, nft_address),
-        ExecuteMsg::ExecuteOrder{ token_id, nft_address, buyer } => execute_order(deps, env, info, token_id, nft_address, buyer)
+        ExecuteMsg::ExecuteOrder{ token_id, nft_address } => execute_order(deps, env, info, token_id, nft_address)
     }
 }
 
@@ -97,11 +97,10 @@ pub fn execute_order(
     env: Env,
     info: MessageInfo,
     token_id: String,
-    nft_address: String,
-    buyer: String
+    nft_address: String
 ) -> Result<Response, ContractError> {
 
-    let res = _execute_order(deps, env, info, token_id, nft_address, buyer).unwrap();
+    let res = _execute_order(deps, env, info, token_id, nft_address).unwrap();
     Ok(res)
 }
 
@@ -289,8 +288,7 @@ fn _execute_order(
     _env: Env,
     info: MessageInfo,
     token_id: String,
-    nft_address: String,
-    buyer: String
+    nft_address: String
 ) -> Result<Response, ContractError> {
 
     if !ORDERS.has(deps.storage, (&token_id, &nft_address)) {
@@ -298,29 +296,44 @@ fn _execute_order(
     }
     let order = ORDERS.load(deps.storage, (&token_id, &nft_address))?;
 
-    // todo - send amount to seller
-    
-    let transfer_cw721_msg = Cw721ExecuteMsg::TransferNft {
-        recipient: buyer,
-        token_id: token_id.clone(),
-    };
-    let exec_cw721_transfer = WasmMsg::Execute {
-        contract_addr: nft_address,
-        msg: to_binary(&transfer_cw721_msg)?,
+    // only seller approve order
+    if order.seller != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+    if !BIDS.has(deps.storage, (&token_id, &nft_address)) {
+        return Err(ContractError::NoBid {});
+    }
+    let bid = BIDS.load(deps.storage, (&token_id, &nft_address))?;
+
+    let mut messages: Vec<CosmosMsg> = vec![];
+
+    // send bid amount to seller
+    messages.push(bid.price.into_msg(&deps.querier, order.seller.clone())?);
+
+
+    // send nft to bidder
+    messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: order.nft_address.to_string(),
+        msg: to_binary(&Cw721ExecuteMsg::TransferNft {
+          recipient: bid.bidder.to_string(), 
+          token_id: order.token_id
+        })?,
         funds: vec![]
-    };
+      })
+    );
 
-    let cw721_transfer_cosmos_msg: CosmosMsg = exec_cw721_transfer.into();
+    // remove bids and orders
+    BIDS.remove(deps.storage, (&token_id, &nft_address));
+    ORDERS.remove(deps.storage, (&token_id, &nft_address));
 
-    let cosmos_msgs = vec![cw721_transfer_cosmos_msg];
-    
     Ok(Response::new()
-        .add_messages(cosmos_msgs)
+        .add_messages(messages)
         .add_attribute("action", "execute_order")
         .add_attribute("token_id", order.token_id)
         .add_attribute("nft_address", order.nft_address)
-        .add_attribute("seller", order.seller)
-        .add_attribute("price", order.price.amount)
+        .add_attribute("seller", order.seller.clone())
+        .add_attribute("bidder", bid.bidder.clone())
+        .add_attribute("price", format!("{}", order.price))
     )
 }
 
