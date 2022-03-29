@@ -22,3 +22,16 @@ schema
 # Local testing
 bombay-instantiate.sh
 bombay-migrate.sh
+
+.editorconfig
+.gitpod.Dockerfile
+.gitpod.yml
+Developing.md
+Importing.md
+LICENSE
+NOTICE
+Publishing.md
+rustfmt.toml
+
+.circleci/config.yml
+.github/workflows/Basic.yml

@@ -33,7 +33,8 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     ValidOrder { token_id: String, nft_address: String },
-    ValidBid { token_id: String, nft_address: String }
+    ValidBid { token_id: String, nft_address: String },
+    Version {}
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

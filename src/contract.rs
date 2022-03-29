@@ -42,6 +42,10 @@ pub fn execute(
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::Version {} => {
+            to_binary(&"1.1")
+        }
+
         QueryMsg::ValidOrder { token_id, nft_address } => {
             let order = ORDERS.load(deps.storage, (&token_id, &nft_address))?;
             to_binary(&order)
@@ -173,13 +177,13 @@ fn _create_bid(
     expire_at: Expiration
 ) -> Result<Response, ContractError> {
     let order = ORDERS.load(deps.storage, (&token_id, &nft_address))?;
-    if order.expire_at.is_expired(&env.block) {
-        return Err(ContractError::Expired {})
-    }
+    // if order.expire_at.is_expired(&env.block) {
+    //     return Err(ContractError::Expired {})
+    // }
     if order.price.amount > price.amount {
         return Err(ContractError::MinPrice { min_bid_amount: price.amount })
     }
-    price.assert_sent_native_token_balance(&info)?;
+    // price.assert_sent_native_token_balance(&info)?;
     let mut messages: Vec<CosmosMsg> = vec![];
     if !BIDS.has(deps.storage, (&token_id, &nft_address)) {
         let bid = Bid {
