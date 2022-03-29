@@ -43,7 +43,8 @@ pub fn execute(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Version {} => {
-            to_binary(&"1.1")
+            // let seconds = env.block.time;
+            to_binary(&"1.72".to_string())
         }
 
         QueryMsg::ValidOrder { token_id, nft_address } => {
@@ -177,9 +178,9 @@ fn _create_bid(
     expire_at: Expiration
 ) -> Result<Response, ContractError> {
     let order = ORDERS.load(deps.storage, (&token_id, &nft_address))?;
-    // if order.expire_at.is_expired(&env.block) {
-    //     return Err(ContractError::Expired {})
-    // }
+    if order.expire_at.is_expired(&env.block) {
+        return Err(ContractError::Expired {});
+    }
     if order.price.amount > price.amount {
         return Err(ContractError::MinPrice { min_bid_amount: price.amount })
     }
@@ -211,7 +212,7 @@ fn _create_bid(
     //TODO price to Escrow - should be performed from frontend
 
     Ok(Response::new()
-        // .add_messages(cosmos_msgs)
+        .add_messages(messages)
         .add_attribute("action", "create_bid")
         .add_attribute("token_id", token_id)
         .add_attribute("nft_address", nft_address)
@@ -227,12 +228,14 @@ fn _cancel_bid(
     nft_address: String
 ) -> Result<Response, ContractError> {
 
-
-    //TODO refund escrow money to bidder
+    //refund escrow money to bidder and cancel bid
+    let bid = BIDS.load(deps.storage, (&token_id, &nft_address))?;
+    let mut messages: Vec<CosmosMsg> = vec![];
+    messages.push(bid.price.into_msg(&deps.querier, bid.bidder)?);
 
     BIDS.remove(deps.storage, (&token_id, &nft_address));
     Ok(Response::new()
-    // .add_messages(cosmos_msgs)
+        .add_messages(messages)
         .add_attribute("action", "cancel_bid")
         .add_attribute("token_id", token_id)
         .add_attribute("nft_address", nft_address)
@@ -253,25 +256,28 @@ fn _cancel_order(
     if order.seller != info.sender {
         return Err(ContractError::Unauthorized {});
     }
+    let mut messages: Vec<CosmosMsg> = vec![];
 
     if BIDS.has(deps.storage, (&token_id, &nft_address)) {
-        //TODO refund escrow money to bidder
+        //refund escrow money to bidder and cancel bid
+        let bid = BIDS.load(deps.storage, (&token_id, &nft_address))?;
+        messages.push(bid.price.into_msg(&deps.querier, bid.bidder)?);
         BIDS.remove(deps.storage, (&token_id, &nft_address));
     }
-    //return nft to seller
-    let cosmos_msgs: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Execute {
+    messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: order.nft_address.to_string(),
         msg: to_binary(&Cw721ExecuteMsg::TransferNft {
           recipient: order.seller.to_string(), 
           token_id: order.token_id
         })?,
         funds: vec![]
-      })];
+      })
+    );
 
     //remove order
     ORDERS.remove(deps.storage, (&token_id, &nft_address));
     Ok(Response::new()
-        .add_messages(cosmos_msgs)
+        .add_messages(messages)
         .add_attribute("action", "cancel_order")
         .add_attribute("token_id", token_id)
         .add_attribute("nft_address", nft_address)

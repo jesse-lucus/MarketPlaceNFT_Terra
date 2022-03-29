@@ -76,7 +76,7 @@ impl Asset{
     if let AssetInfo::NativeToken { denom } = &self.info {
       match message_info.funds.iter().find(|x| x.denom == *denom) {
         Some(coin) => {
-          if self.amount == coin.amount {
+          if self.amount < coin.amount {
             Ok(())
           } else {
             Err(StdError::generic_err("Native token balance mismatch between the argument and the transferred"))
