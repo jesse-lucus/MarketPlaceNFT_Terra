@@ -3,7 +3,8 @@ use crate::error::ContractError;
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    to_binary, DepsMut, Env, MessageInfo, CosmosMsg, Response, QueryRequest, WasmMsg, WasmQuery, StdResult, Deps, Binary, Uint128, Timestamp
+    to_binary, DepsMut, Env, MessageInfo, CosmosMsg, Response, QueryRequest, WasmMsg, WasmQuery, StdResult, Deps, Binary, Uint128, Timestamp,
+    Storage, QuerierWrapper
 };
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw20::{Cw20ExecuteMsg};
@@ -74,14 +75,6 @@ pub fn create_order(
 
     let res = _create_order(deps, env, info, token_id, nft_address, price, expire_at).unwrap();
     Ok(res)
-    // Ok(Response::new()
-    //     .add_attribute("action", "create_order")
-    //     .add_attribute("seller", order.seller)
-    //     .add_attribute("nft_address", order.nft_address)
-    //     .add_attribute("token_id", order.token_id)
-    //     .add_attribute("price", order.price.to_string())
-    //     .add_attribute("expire_at", order.expire_at.to_string())
-    // )
 }
 
 pub fn cancel_order(
@@ -125,14 +118,19 @@ pub fn create_bid(
 
 pub fn cancel_bid(
     deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    _env: Env,
+    _info: MessageInfo,
     token_id: String,
     nft_address: String
 ) -> Result<Response, ContractError> {
-
-    let res = _cancel_bid(deps, env, info, token_id, nft_address).unwrap();
-    Ok(res)
+    let mut messages: Vec<CosmosMsg> = vec![];
+    messages.push(_cancel_bid(deps.storage, &deps.querier, token_id.clone(), nft_address.clone()).unwrap());
+    Ok(Response::new()
+        .add_messages(messages)
+        .add_attribute("action", "cancel_bid")
+        .add_attribute("token_id", token_id)
+        .add_attribute("nft_address", nft_address)
+    )
 }
 
 fn _create_order(
@@ -209,8 +207,8 @@ fn _create_bid(
     }
     let mut messages: Vec<CosmosMsg> = vec![];
 
-    let empty = BIDS.may_load(deps.storage, (&token_id, &nft_address))?;
-    if empty == None {
+    let bid_empty = BIDS.may_load(deps.storage, (&token_id, &nft_address))?;
+    if bid_empty == None {
         if price.amount <= Uint128::zero() {
             return Err(ContractError::ZeroBidAmount {});
         }
@@ -233,8 +231,7 @@ fn _create_bid(
             },
             Expiration::Never {} => {},
         }
-        messages.push(bid.price.into_msg(&deps.querier, bid.bidder)?);
-        BIDS.remove(deps.storage, (&token_id, &nft_address));
+        messages.push(_cancel_bid(deps.storage, &deps.querier, token_id.clone(), nft_address.clone()).unwrap())
     }
 
     //Transfer sale amount from bidder escrow- should be done from coin params on execution
@@ -256,28 +253,10 @@ fn _create_bid(
     )
 }
 
-fn _cancel_bid(
-    deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    token_id: String,
-    nft_address: String
-) -> Result<Response, ContractError> {
-
-    //refund escrow money to bidder and cancel bid
-    let bid = BIDS.load(deps.storage, (&token_id, &nft_address))?;
-    let mut messages: Vec<CosmosMsg> = vec![];
-    messages.push(bid.price.into_msg(&deps.querier, bid.bidder)?);
-
-    BIDS.remove(deps.storage, (&token_id, &nft_address));
-    Ok(Response::new()
-        .add_messages(messages)
-        .add_attribute("action", "cancel_bid")
-        .add_attribute("token_id", token_id)
-        .add_attribute("nft_address", nft_address)
-    )
-}
-
+/**
+ * @dev Cancel an already published order
+ *  can only be canceled by seller or the contract owner
+ */
 fn _cancel_order(
     deps: DepsMut,
     _env: Env,
@@ -292,14 +271,13 @@ fn _cancel_order(
     if order.seller != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-    let mut messages: Vec<CosmosMsg> = vec![];
 
-    if BIDS.has(deps.storage, (&token_id, &nft_address)) {
-        //refund escrow money to bidder and cancel bid
-        let bid = BIDS.load(deps.storage, (&token_id, &nft_address))?;
-        messages.push(bid.price.into_msg(&deps.querier, bid.bidder)?);
-        BIDS.remove(deps.storage, (&token_id, &nft_address));
+    let mut messages: Vec<CosmosMsg> = vec![];
+    let bid_empty = BIDS.may_load(deps.storage, (&token_id, &nft_address))?;
+    if bid_empty != None {
+        messages.push(_cancel_bid(deps.storage, &deps.querier, token_id.clone(), nft_address.clone()).unwrap())
     }
+
     messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: order.nft_address.to_string(),
         msg: to_binary(&Cw721ExecuteMsg::TransferNft {
@@ -318,6 +296,19 @@ fn _cancel_order(
         .add_attribute("token_id", token_id)
         .add_attribute("nft_address", nft_address)
     )
+}
+
+
+fn _cancel_bid(
+    storage: &mut dyn Storage,
+    querier: &QuerierWrapper,
+    token_id: String,
+    nft_address: String
+) -> StdResult<CosmosMsg> {
+    let bid = BIDS.load(storage, (&token_id, &nft_address))?;
+    let message = bid.price.into_msg(querier, bid.bidder)?;
+    BIDS.remove(storage, (&token_id, &nft_address));
+    Ok(message)
 }
 
 fn _execute_order(
