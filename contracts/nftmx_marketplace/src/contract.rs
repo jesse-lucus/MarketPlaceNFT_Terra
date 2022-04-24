@@ -9,17 +9,21 @@ use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw20::{Cw20ExecuteMsg};
 use cw0:: Expiration;
 
-use crate::state::{ ORDERS, Order, BIDS, Bid };
+use crate::state::{ ORDERS, Order, BIDS, Bid, Config, CONFIG };
 use crate::msg::{ ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg };
 use crate::asset::{Asset, AssetInfo};
 
 #[entry_point]
 pub fn instantiate(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> StdResult<Response> {
+    let con = Config {
+        accepted_token: deps.api.addr_validate(&msg.accepted_token)?
+    };
+    CONFIG.save(deps.storage, &con)?;
     Ok(Response::default())
 }
 
@@ -316,7 +320,7 @@ fn _execute_order(
         contract_addr: order.nft_address.to_string(),
         msg: to_binary(&Cw721ExecuteMsg::TransferNft {
           recipient: bid.bidder.to_string(), 
-          token_id: order.token_id
+          token_id: order.token_id.clone()
         })?,
         funds: vec![]
       })

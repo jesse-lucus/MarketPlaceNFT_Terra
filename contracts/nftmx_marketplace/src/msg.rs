@@ -9,6 +9,7 @@ pub struct InstantiateMsg {
     pub name: String,
     pub symbol: String,
     pub decimals: Uint128,
+    pub accepted_token: String
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]

@@ -1,5 +1,5 @@
 [package]
-name = "mftmx-marketplace"
+name = "nftmx-marketplace"
 description = "The mftmaketplace in terra network"
 version = "0.1.0"
 authors = ["coderighter2 <24811616+coderighter2@users.noreply.github.com>"]
