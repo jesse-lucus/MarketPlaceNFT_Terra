@@ -19,6 +19,9 @@ pub enum ContractError {
     #[error("You must bid higher or equal to {} (min bid amount)", min_bid_amount)]
     MinPrice { min_bid_amount: Uint128 },  
 
+    #[error("no existing order the nft and token id")]
+    NoOrder {},
+
     #[error("no bid for order")]
     NoBid {},
 

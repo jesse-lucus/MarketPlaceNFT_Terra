@@ -37,6 +37,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::SetPaused { paused } => set_paused(deps, env, info, paused),
         ExecuteMsg::CreateOrder{ token_id, nft_address, price, expire_at } => create_order(deps, env, info, token_id, nft_address, price, expire_at),
+        ExecuteMsg::UpdateOrder{ token_id, nft_address, price, expire_at } => update_order(deps, env, info, token_id, nft_address, price, expire_at),
         ExecuteMsg::CreateBid{ token_id, nft_address, price, expire_at } => create_bid(deps, env, info, token_id, nft_address, price, expire_at),
         ExecuteMsg::CancelOrder{ token_id, nft_address } => cancel_order(deps, env, info, token_id, nft_address),
         ExecuteMsg::CancelBid{ token_id, nft_address } => cancel_bid(deps, env, info, token_id, nft_address),
@@ -90,6 +91,22 @@ pub fn create_order(
         return Err(ContractError:: MarketplacePaused{});
     }
     let res = _create_order(deps, env, info, token_id, nft_address, price, expire_at).unwrap();
+    Ok(res)
+}
+
+pub fn update_order(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+    nft_address: String,
+    price: Asset,
+    expire_at: Expiration
+) -> Result<Response, ContractError> {
+    if PAUSED.load(deps.storage)? {
+        return Err(ContractError:: MarketplacePaused{});
+    }
+    let res = _update_order(deps, env, info, token_id, nft_address, price, expire_at).unwrap();
     Ok(res)
 }
 
@@ -321,6 +338,57 @@ fn _cancel_order(
     )
 }
 
+fn _update_order(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+    nft_address: String,
+    price: Asset,
+    expire_at: Expiration
+    
+) -> Result<Response, ContractError> {
+
+    if !ORDERS.has(deps.storage, (&token_id, &nft_address)) {
+        return Err(ContractError::NoOrder {});
+    }
+    let mut order = ORDERS.load(deps.storage, (&token_id, &nft_address))?;
+    match order.expire_at {
+        Expiration::AtHeight(_) => {},
+        Expiration::AtTime(time) => {
+            let seconds = env.block.time.seconds();
+            if time.seconds() < seconds {
+                return Err(ContractError::Expired {});
+            } 
+        },
+        Expiration::Never {} => {},
+    }
+    if price.amount <= Uint128::zero() {
+        return Err(ContractError::InvalidPrice {})
+    }
+    match expire_at {
+        Expiration::AtHeight(_) => {},
+        Expiration::AtTime(time) => {
+            let seconds = env.block.time.seconds();
+            if time.seconds() < seconds + 60u64 {
+                return Err(ContractError::InvalidExpiration {})
+            }
+        },
+        Expiration::Never {} => {},
+    }
+    // only seller update order
+    if order.seller != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+    order.price = price.clone();
+    order.expire_at = expire_at.clone();
+    Ok(Response::new()
+        .add_attribute("action", "update_order")
+        .add_attribute("token_id", token_id)
+        .add_attribute("nft_address", nft_address)
+    )
+}
+
 fn _cancel_bid(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
@@ -332,6 +400,7 @@ fn _cancel_bid(
     BIDS.remove(storage, (&token_id, &nft_address));
     Ok(message)
 }
+
 
 fn _execute_order(
     deps: DepsMut,

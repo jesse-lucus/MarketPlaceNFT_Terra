@@ -25,6 +25,7 @@ pub struct OrderMsg {
 pub enum ExecuteMsg {
     SetPaused { paused: bool },
     CreateOrder { token_id:String, nft_address: String, price: Asset, expire_at: Expiration },
+    UpdateOrder { token_id:String, nft_address: String, price: Asset, expire_at: Expiration },
     CreateBid { token_id:String, nft_address: String, price: Asset, expire_at: Expiration },
     CancelOrder { token_id:String, nft_address: String },
     CancelBid { token_id:String, nft_address: String },
