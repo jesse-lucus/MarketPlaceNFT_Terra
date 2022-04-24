@@ -28,4 +28,10 @@ pub enum ContractError {
     #[error("Marketplace: Publication should be more than 1 minute in the future")]
     InvalidExpiration {},       
 
+    #[error("Marketplace: bid should be > 0")]
+    ZeroBidAmount {},       
+
+    #[error("Marketplace: bid price should be higher than last bid")]
+    InvalidBidAmount {},       
+
 }

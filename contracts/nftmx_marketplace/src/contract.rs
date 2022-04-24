@@ -193,39 +193,60 @@ fn _create_bid(
     expire_at: Expiration
 ) -> Result<Response, ContractError> {
     let order = ORDERS.load(deps.storage, (&token_id, &nft_address))?;
-    if order.expire_at.is_expired(&env.block) {
-        return Err(ContractError::Expired {});
+    match order.expire_at {
+        Expiration::AtHeight(_) => {},
+        Expiration::AtTime(time) => {
+            let seconds = env.block.time.seconds();
+            if time.seconds() < seconds {
+                return Err(ContractError::Expired {});
+            }
+        },
+        Expiration::Never {} => {},
     }
+
     if order.price.amount > price.amount {
         return Err(ContractError::MinPrice { min_bid_amount: price.amount })
     }
-    // price.assert_sent_native_token_balance(&info)?;
     let mut messages: Vec<CosmosMsg> = vec![];
-    if !BIDS.has(deps.storage, (&token_id, &nft_address)) {
-        let bid = Bid {
-            token_id: token_id.clone(),
-            nft_address: deps.api.addr_validate(&nft_address)?,
-            bidder: deps.api.addr_validate(info.sender.as_str())?,
-            seller: order.seller,
-            price: price,
-            expire_at: expire_at
-        };
-        BIDS.save(deps.storage, (&token_id, &nft_address), &bid)?;    
-    } else {
-        let mut bid = BIDS.load(deps.storage, (&token_id, &nft_address))?;
-        if bid.price.amount > price.amount {
-            return Err(ContractError::MinPrice { min_bid_amount: price.amount.clone() })
-        }
-        //refund escrow to previous bidder
-        messages.push(bid.price.clone().into_msg(&deps.querier, bid.bidder.clone())?);
 
-        bid.bidder = deps.api.addr_validate(info.sender.as_str())?;
-        bid.price = price;
-        BIDS.save(deps.storage, (&token_id, &nft_address), &bid)?;
+    let empty = BIDS.may_load(deps.storage, (&token_id, &nft_address))?;
+    if empty == None {
+        if price.amount <= Uint128::zero() {
+            return Err(ContractError::ZeroBidAmount {});
+        }
+
+    } else {
+        let bid = BIDS.load(deps.storage, (&token_id, &nft_address))?;
+        match bid.expire_at {
+            Expiration::AtHeight(_) => {},
+            Expiration::AtTime(time) => {
+                let seconds = env.block.time.seconds();
+                if time.seconds() < seconds {
+                    if price.amount <= Uint128::zero() {
+                        return Err(ContractError::ZeroBidAmount {});
+                    }            
+                } else {
+                    if price.amount < bid.price.amount {
+                        return Err(ContractError::InvalidBidAmount {});
+                    }
+                }
+            },
+            Expiration::Never {} => {},
+        }
+        messages.push(bid.price.into_msg(&deps.querier, bid.bidder)?);
+        BIDS.remove(deps.storage, (&token_id, &nft_address));
     }
 
-    //TODO price to Escrow - should be performed from frontend
-
+    //Transfer sale amount from bidder escrow- should be done from coin params on execution
+    let bid = Bid {
+        token_id: token_id.clone(),
+        nft_address: deps.api.addr_validate(&nft_address)?,
+        bidder: deps.api.addr_validate(info.sender.as_str())?,
+        seller: order.seller,
+        price: price,
+        expire_at: expire_at
+    };
+    BIDS.save(deps.storage, (&token_id, &nft_address), &bid)?;
     Ok(Response::new()
         .add_messages(messages)
         .add_attribute("action", "create_bid")
