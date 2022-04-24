@@ -137,23 +137,35 @@ pub fn cancel_bid(
 
 fn _create_order(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     token_id: String,
     nft_address: String,
     price: Asset,
     expire_at: Expiration
 ) -> Result<Response, ContractError> {
-
-    // TODO:  validation
-
-    // let owner_query = Cw721QueryMsg::OwnerOf{token_id: token_id.clone(), include_expired: std::option::Option::default()};
-    // let response: OwnerOfResponse = deps.querier.query(&QueryRequest::Wasm(
-    //     WasmQuery::Smart {
-    //         contract_addr: nft_address.clone(), 
-    //         msg: to_binary(&owner_query)?
-    //     })).unwrap();
-    
+    let owner_res: OwnerOfResponse =
+    deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: nft_address.clone(),
+        msg: to_binary(&Cw721QueryMsg::OwnerOf { token_id: token_id.clone(), include_expired: std::option::Option::default() })?,
+    })).unwrap();
+    if owner_res.owner != info.sender.to_string() {
+        return Err(ContractError::NoOwner {})
+    }
+    if price.amount <= Uint128::zero() {
+        return Err(ContractError::InvalidPrice {})
+    }
+    match expire_at {
+        Expiration::AtHeight(_) => {},
+        Expiration::AtTime(time) => {
+            let seconds = env.block.time.seconds();
+            if time.seconds() < seconds + 60u64 {
+                return Err(ContractError::InvalidExpiration {})
+            }
+        },
+        Expiration::Never {} => {},
+    }
+    //get NFT asset to seller - should be called from frontend
     let order = Order {
         token_id: token_id.clone(),
         nft_address: deps.api.addr_validate(&nft_address)?,

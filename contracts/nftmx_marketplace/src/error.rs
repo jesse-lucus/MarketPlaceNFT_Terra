@@ -18,4 +18,14 @@ pub enum ContractError {
 
     #[error("no bid for order")]
     NoBid {},
+
+    #[error("Marketplace: Only the asset owner can create orders")]
+    NoOwner {},   
+    
+    #[error("Marketplace: Price should be bigger than 0")]
+    InvalidPrice {},    
+    
+    #[error("Marketplace: Publication should be more than 1 minute in the future")]
+    InvalidExpiration {},       
+
 }
