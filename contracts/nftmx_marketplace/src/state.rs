@@ -31,6 +31,7 @@ pub struct Config {
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
+pub const PAUSED: Item<bool> = Item::new("pasused");
 
 pub const ORDERS: Map<(&str, &str), Order> = Map::new("orders");
 pub const BIDS: Map<(&str, &str), Bid> = Map::new("bids");

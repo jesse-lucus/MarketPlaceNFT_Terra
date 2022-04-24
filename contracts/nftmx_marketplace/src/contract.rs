@@ -7,12 +7,11 @@ use cosmwasm_std::{
     Storage, QuerierWrapper
 };
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
-use cw20::{Cw20ExecuteMsg};
 use cw0:: Expiration;
 
-use crate::state::{ ORDERS, Order, BIDS, Bid, Config, CONFIG };
+use crate::state::{ ORDERS, Order, BIDS, Bid, Config, CONFIG, PAUSED };
 use crate::msg::{ ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg };
-use crate::asset::{Asset, AssetInfo};
+use crate::asset::{ Asset };
 
 #[entry_point]
 pub fn instantiate(
@@ -36,6 +35,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::SetPaused { paused } => set_paused(deps, env, info, paused),
         ExecuteMsg::CreateOrder{ token_id, nft_address, price, expire_at } => create_order(deps, env, info, token_id, nft_address, price, expire_at),
         ExecuteMsg::CreateBid{ token_id, nft_address, price, expire_at } => create_bid(deps, env, info, token_id, nft_address, price, expire_at),
         ExecuteMsg::CancelOrder{ token_id, nft_address } => cancel_order(deps, env, info, token_id, nft_address),
@@ -63,6 +63,20 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
+pub fn set_paused(
+    deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    paused: bool,
+) -> Result<Response, ContractError> {
+    PAUSED.save(deps.storage, &paused)?;
+    Ok(Response::new()
+        .add_attribute("action", "set_paused")
+        .add_attribute("paused", paused.to_string())
+    )
+}
+
+
 pub fn create_order(
     deps: DepsMut,
     env: Env,
@@ -72,7 +86,9 @@ pub fn create_order(
     price: Asset,
     expire_at: Expiration
 ) -> Result<Response, ContractError> {
-
+    if PAUSED.load(deps.storage)? {
+        return Err(ContractError:: MarketplacePaused{});
+    }
     let res = _create_order(deps, env, info, token_id, nft_address, price, expire_at).unwrap();
     Ok(res)
 }
@@ -84,7 +100,9 @@ pub fn cancel_order(
     token_id: String,
     nft_address: String
 ) -> Result<Response, ContractError> {
-
+    if PAUSED.load(deps.storage)? {
+        return Err(ContractError:: MarketplacePaused{});
+    }
     let res = _cancel_order(deps, env, info, token_id, nft_address).unwrap();
     Ok(res)
 }
@@ -96,7 +114,9 @@ pub fn execute_order(
     token_id: String,
     nft_address: String
 ) -> Result<Response, ContractError> {
-
+    if PAUSED.load(deps.storage)? {
+        return Err(ContractError:: MarketplacePaused{});
+    }
     let res = _execute_order(deps, env, info, token_id, nft_address).unwrap();
     Ok(res)
 }
@@ -111,7 +131,9 @@ pub fn create_bid(
     price: Asset,
     expire_at: Expiration
 ) -> Result<Response, ContractError> {
-
+    if PAUSED.load(deps.storage)? {
+        return Err(ContractError:: MarketplacePaused{});
+    }
     let res = _create_bid(deps, env, info, token_id, nft_address, price, expire_at).unwrap();
     Ok(res)
 }
@@ -123,6 +145,9 @@ pub fn cancel_bid(
     token_id: String,
     nft_address: String
 ) -> Result<Response, ContractError> {
+    if PAUSED.load(deps.storage)? {
+        return Err(ContractError:: MarketplacePaused{});
+    }
     let mut messages: Vec<CosmosMsg> = vec![];
     messages.push(_cancel_bid(deps.storage, &deps.querier, token_id.clone(), nft_address.clone()).unwrap());
     Ok(Response::new()

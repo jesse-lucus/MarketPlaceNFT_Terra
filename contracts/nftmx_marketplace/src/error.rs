@@ -10,6 +10,9 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("Marketplace: paused")]
+    MarketplacePaused {},       
+
     #[error("Given expiration is already expired or order is already expired")]
     Expired {},
 

@@ -23,6 +23,7 @@ pub struct OrderMsg {
 #[derive(Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    SetPaused { paused: bool },
     CreateOrder { token_id:String, nft_address: String, price: Asset, expire_at: Expiration },
     CreateBid { token_id:String, nft_address: String, price: Asset, expire_at: Expiration },
     CancelOrder { token_id:String, nft_address: String },
