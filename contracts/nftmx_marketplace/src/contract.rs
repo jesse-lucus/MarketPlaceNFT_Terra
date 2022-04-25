@@ -44,7 +44,8 @@ pub fn execute(
         ExecuteMsg::CreateBid{ token_id, nft_address, price, expire_at } => create_bid(deps, env, info, token_id, nft_address, price, expire_at),
         ExecuteMsg::CancelOrder{ token_id, nft_address } => cancel_order(deps, env, info, token_id, nft_address),
         ExecuteMsg::CancelBid{ token_id, nft_address } => cancel_bid(deps, env, info, token_id, nft_address),
-        ExecuteMsg::SafeExecuteOrder{ token_id, nft_address, price } => safe_execute_order(deps, env, info, token_id, nft_address, price)
+        ExecuteMsg::SafeExecuteOrder{ token_id, nft_address, price } => safe_execute_order(deps, env, info, token_id, nft_address, price),
+        ExecuteMsg::AcceptBid{ token_id, nft_address, price } => accept_bid(deps, env, info, token_id, nft_address, price)
     }
 }
 
@@ -156,6 +157,21 @@ pub fn create_bid(
         return Err(ContractError:: MarketplacePaused{});
     }
     let res = _create_bid(deps, env, info, token_id, nft_address, price, expire_at).unwrap();
+    Ok(res)
+}
+
+pub fn accept_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+    nft_address: String,
+    price: Asset
+) -> Result<Response, ContractError> {
+    if PAUSED.load(deps.storage)? {
+        return Err(ContractError:: MarketplacePaused{});
+    }
+    let res = _accept_bid(deps, env, info, token_id, nft_address, price).unwrap();
     Ok(res)
 }
 
@@ -459,14 +475,18 @@ fn _safe_execute_order(
     )
 }
 
-fn _execute_order(
+fn _accept_bid(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     token_id: String,
-    nft_address: String
+    nft_address: String,
+    price: Asset
 ) -> Result<Response, ContractError> {
 
+    let con = CONFIG.load(deps.storage)?;
+
+    //Frontend -  send coin amount as param
     if !ORDERS.has(deps.storage, (&token_id, &nft_address)) {
         return Err(ContractError::NoOrder {});
     }
@@ -475,14 +495,49 @@ fn _execute_order(
     if order.seller != info.sender {
         return Err(ContractError::Unauthorized {});
     }
+    match order.expire_at {
+        Expiration::AtHeight(_) => {},
+        Expiration::AtTime(time) => {
+            let seconds = env.block.time.seconds();
+            if time.seconds() < seconds {
+                return Err(ContractError::Expired {})
+            }
+        },
+        Expiration::Never {} => {},
+    }    
+
     if !BIDS.has(deps.storage, (&token_id, &nft_address)) {
         return Err(ContractError::NoBid {});
     }
     let bid = BIDS.load(deps.storage, (&token_id, &nft_address))?;
+
+    // price validation - native sent balance check
+    price.assert_sent_native_token_balance(&info)?;
+
+    if bid.price.info != price.info || bid.price.amount != price.amount {
+        return Err(ContractError::InvalidPrice {});
+    }
+
+    match bid.expire_at {
+        Expiration::AtHeight(_) => {},
+        Expiration::AtTime(time) => {
+            let seconds = env.block.time.seconds();
+            if time.seconds() < seconds {
+                return Err(ContractError::BidExpired {})
+            }
+        },
+        Expiration::Never {} => {},
+    }    
+
+
     let mut messages: Vec<CosmosMsg> = vec![];
 
-    // send bid amount to seller
-    messages.push(bid.price.into_msg(&deps.querier, order.seller.clone())?);
+    // transfer escrowed bid amount minus market fee to seller
+    let seller_amount_asset = Asset {
+        info: bid.price.info.clone(),
+        amount: bid.price.amount - (order.price.amount * con.owner_cut_rate)
+    };
+    messages.push(seller_amount_asset.into_msg(&deps.querier, order.seller.clone())?);
 
     // send nft to bidder
     messages.push(CosmosMsg::Wasm(WasmMsg::Execute {

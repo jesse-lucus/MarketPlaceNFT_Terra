@@ -40,4 +40,6 @@ pub enum ContractError {
     #[error("Marketplace: bid price should be higher than last bid")]
     InvalidBidAmount {},       
 
+    #[error("Marketplace: the bid expired")]
+    BidExpired {},
 }
