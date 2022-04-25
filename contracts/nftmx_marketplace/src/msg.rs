@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use cosmwasm_std::{ Uint128, Decimal };
 use cw0::Expiration;
-use crate::asset::{Asset, AssetInfo};
+use crate::asset::{Asset};
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct InstantiateMsg {

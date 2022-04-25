@@ -3,7 +3,7 @@ use crate::error::ContractError;
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    to_binary, DepsMut, Env, MessageInfo, CosmosMsg, Response, QueryRequest, WasmMsg, WasmQuery, StdResult, Deps, Binary, Uint128, Timestamp,
+    to_binary, DepsMut, Env, MessageInfo, CosmosMsg, Response, QueryRequest, WasmMsg, WasmQuery, StdResult, Deps, Binary, Uint128,
     Storage, QuerierWrapper, Decimal
 };
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -80,7 +80,6 @@ pub fn set_paused(
         .add_attribute("paused", paused.to_string())
     )
 }
-
 
 pub fn create_order(
     deps: DepsMut,
