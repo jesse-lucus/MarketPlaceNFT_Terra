@@ -1,10 +1,10 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{ StdResult, Storage, Addr };
+use cosmwasm_std::{ Addr };
 use cw_storage_plus::{ Map, Item };
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{ Decimal };
 use cw0::Expiration;
-use crate::asset::{Asset, AssetInfo};
+use crate::asset::{Asset};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Order {
@@ -27,7 +27,10 @@ pub struct Bid {
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq)]
 pub struct Config {
+  pub owner: Addr,
   pub accepted_token: Addr,
+  pub owner_cut_rate: Decimal,
+  pub owner_cut_rate_max: Decimal
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");

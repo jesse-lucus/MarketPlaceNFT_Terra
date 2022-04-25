@@ -1,6 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{ Uint128, Decimal };
 use cw0::Expiration;
 use crate::asset::{Asset, AssetInfo};
 
@@ -9,7 +9,8 @@ pub struct InstantiateMsg {
     pub name: String,
     pub symbol: String,
     pub decimals: Uint128,
-    pub accepted_token: String
+    pub accepted_token: String,
+    pub owner_cut_rate: Decimal
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
@@ -29,7 +30,7 @@ pub enum ExecuteMsg {
     CreateBid { token_id:String, nft_address: String, price: Asset, expire_at: Expiration },
     CancelOrder { token_id:String, nft_address: String },
     CancelBid { token_id:String, nft_address: String },
-    ExecuteOrder { token_id:String, nft_address: String }
+    SafeExecuteOrder { token_id:String, nft_address: String, price: Asset }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

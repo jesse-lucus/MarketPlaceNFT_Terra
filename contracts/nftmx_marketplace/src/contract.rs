@@ -4,7 +4,7 @@ use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
     to_binary, DepsMut, Env, MessageInfo, CosmosMsg, Response, QueryRequest, WasmMsg, WasmQuery, StdResult, Deps, Binary, Uint128, Timestamp,
-    Storage, QuerierWrapper
+    Storage, QuerierWrapper, Decimal
 };
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw0:: Expiration;
@@ -17,11 +17,14 @@ use crate::asset::{ Asset };
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let con = Config {
-        accepted_token: deps.api.addr_validate(&msg.accepted_token)?
+        owner: info.sender,
+        accepted_token: deps.api.addr_validate(&msg.accepted_token)?,
+        owner_cut_rate: msg.owner_cut_rate,
+        owner_cut_rate_max: Decimal::percent(10),
     };
     CONFIG.save(deps.storage, &con)?;
     Ok(Response::default())
@@ -41,7 +44,7 @@ pub fn execute(
         ExecuteMsg::CreateBid{ token_id, nft_address, price, expire_at } => create_bid(deps, env, info, token_id, nft_address, price, expire_at),
         ExecuteMsg::CancelOrder{ token_id, nft_address } => cancel_order(deps, env, info, token_id, nft_address),
         ExecuteMsg::CancelBid{ token_id, nft_address } => cancel_bid(deps, env, info, token_id, nft_address),
-        ExecuteMsg::ExecuteOrder{ token_id, nft_address } => execute_order(deps, env, info, token_id, nft_address)
+        ExecuteMsg::SafeExecuteOrder{ token_id, nft_address, price } => safe_execute_order(deps, env, info, token_id, nft_address, price)
     }
 }
 
@@ -124,17 +127,18 @@ pub fn cancel_order(
     Ok(res)
 }
 
-pub fn execute_order(
+pub fn safe_execute_order(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     token_id: String,
-    nft_address: String
+    nft_address: String,
+    price: Asset
 ) -> Result<Response, ContractError> {
     if PAUSED.load(deps.storage)? {
         return Err(ContractError:: MarketplacePaused{});
     }
-    let res = _execute_order(deps, env, info, token_id, nft_address).unwrap();
+    let res = _safe_execute_order(deps, env, info, token_id, nft_address, price).unwrap();
     Ok(res)
 }
 
@@ -401,6 +405,59 @@ fn _cancel_bid(
     Ok(message)
 }
 
+fn _safe_execute_order(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    token_id: String,
+    nft_address: String,
+    price: Asset
+) -> Result<Response, ContractError> {
+
+    if !ORDERS.has(deps.storage, (&token_id, &nft_address)) {
+        return Err(ContractError::NoOrder {});
+    }
+    let order = ORDERS.load(deps.storage, (&token_id, &nft_address))?;
+    if order.price.info != price.info || order.price.amount != price.amount {
+        return Err(ContractError::InvalidPrice {});
+    }
+    // Transfer all amount by coin param on calling
+    // it should be performed from frontend by coin params.
+    let mut messages: Vec<CosmosMsg> = vec![];
+    let con = CONFIG.load(deps.storage)?;
+    if con.owner_cut_rate > Decimal::zero() {
+        let sales_share_amount_asset = Asset {
+            info: order.price.info.clone(),
+            amount: order.price.amount * con.owner_cut_rate
+        };
+        messages.push(sales_share_amount_asset.into_msg(&deps.querier, con.owner.clone())?);
+    }
+    let seller_amount_asset = Asset {
+        info: order.price.info.clone(),
+        amount: order.price.amount - (order.price.amount * con.owner_cut_rate)
+    };
+    messages.push(seller_amount_asset.into_msg(&deps.querier, order.seller.clone())?);
+
+    // remove bids and orders
+    if BIDS.has(deps.storage, (&token_id, &nft_address)) {
+        messages.push(_cancel_bid(deps.storage, &deps.querier, token_id.clone(), nft_address.clone()).unwrap());
+    }
+    messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: order.nft_address.to_string(),
+        msg: to_binary(&Cw721ExecuteMsg::TransferNft {
+          recipient: info.sender.to_string(), 
+          token_id: order.token_id.clone()
+        })?,
+        funds: vec![]
+      })
+    );
+    ORDERS.remove(deps.storage, (&token_id, &nft_address));
+    Ok(Response::new()
+        .add_attribute("action", "_safe_execute_order")
+        .add_attribute("token_id", token_id)
+        .add_attribute("nft_address", nft_address)
+    )
+}
 
 fn _execute_order(
     deps: DepsMut,
@@ -411,7 +468,7 @@ fn _execute_order(
 ) -> Result<Response, ContractError> {
 
     if !ORDERS.has(deps.storage, (&token_id, &nft_address)) {
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::NoOrder {});
     }
     let order = ORDERS.load(deps.storage, (&token_id, &nft_address))?;
     // only seller approve order
