@@ -20,7 +20,7 @@
           "decimals": "6",
           "name": "marketplace",
           "symbol":"terrain",
-          "accepted_token": "",
+          "accepted_token": "terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp",
           "owner_cut_rate": "0.1"
         }
       }

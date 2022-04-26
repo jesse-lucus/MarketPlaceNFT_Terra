@@ -1,15 +1,9 @@
 {
   "testnet": {
-    "counter": {
-      "codeId": "58061",
+    "nftmx_marketplace": {
+      "codeId": "67216",
       "contractAddresses": {
-        "default": "terra12wgyfvnqwaad5raf78t3heqd475kuyfdqvw9fc"
-      }
-    },
-    "mftmx_marketplace": {
-      "codeId": "58275",
-      "contractAddresses": {
-        "default": "terra1vfas6tt3tsdnzqy42g7u0my68gln4ep9n34w5u"
+        "default": "terra1d0n6e9k666xurqej0j0tl0znkwzrnqr8sayx37"
       }
     }
   }
