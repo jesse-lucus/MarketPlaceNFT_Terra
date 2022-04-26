@@ -526,7 +526,7 @@ fn _accept_bid(
             }
         },
         Expiration::Never {} => {},
-    }    
+    }
 
 
     let mut messages: Vec<CosmosMsg> = vec![];

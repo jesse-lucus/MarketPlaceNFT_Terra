@@ -19,7 +19,9 @@
         "instantiateMsg": {
           "decimals": "6",
           "name": "marketplace",
-          "symbol":"terrain"
+          "symbol":"terrain",
+          "accepted_token": "",
+          "owner_cut_rate": "0.1"
         }
       }
     }

@@ -1,9 +1,10 @@
 {
-  "name": "my-terra-dapp",
+  "name": "nftmx-terra-dapp",
   "version": "1.0.0",
   "description": "",
   "dependencies": {
-    "@terra-money/terrain": "0.1.0"
+    "@terra-money/terrain": "0.1.0",
+    "dotenv": "^16.0.0"
   },
   "workspaces": [
     "frontend"

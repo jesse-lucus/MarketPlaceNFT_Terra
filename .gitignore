@@ -36,3 +36,5 @@ rustfmt.toml
 .circleci/config.yml
 .github/workflows/Basic.yml
 .cargo/config
+node_modules/
+.env
