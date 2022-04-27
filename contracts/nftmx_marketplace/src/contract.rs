@@ -571,10 +571,12 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Respons
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use crate::msg::{ InstantiateMsg };
+    use crate::asset::{ Asset, AssetInfo };
+    use cosmwasm_std::{ Timestamp };
 
     mod instantiate {
         use super::*;
-        use crate::error::ContractError;
 
         #[test]
         fn works() {
@@ -582,7 +584,9 @@ mod tests {
             let instantiate_msg = InstantiateMsg {
                 decimals: Uint128::from(11223344u128),
                 name: "testing2".to_string(),
-                symbol: "testing".to_string()
+                symbol: "testing".to_string(),
+                accepted_token: "terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp".to_string(),
+                owner_cut_rate: Decimal::from_ratio(Uint128::from(10u64), Uint128::from(100u64))
             };
             let res = instantiate(deps.as_mut(), mock_env(), mock_info(&"signer".to_string(), &[]), instantiate_msg).unwrap();
             assert_eq!(0, res.messages.len());

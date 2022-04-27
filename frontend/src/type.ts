@@ -8,6 +8,3 @@ export enum ExecuteMsg {
   SafeExecuteOrder = 'safe_execute_order',
   AcceptBid ='accept_bid'
 }
-
-
-
