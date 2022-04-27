@@ -598,14 +598,43 @@ mod tests {
     fn create_order_works() {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info(&"signer".to_string(), &[]);
+        let env = mock_env();
         let expiration = Expiration::AtTime(Timestamp::from_seconds(1648958996));
+        let expired_expiration = Expiration::AtTime(env.block.time);
 
         let price = Asset {
             amount: Uint128::from(10000u128),
             info: AssetInfo::NativeToken {denom : "uluna".to_string()}
         };
+        let zeroprice = Asset {
+            amount: Uint128::from(0u64),
+            info: AssetInfo::NativeToken {denom : "uluna".to_string()}
+        };
+
         let nft_address = "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju".to_string();
         let token_id = "2".to_string();
+
+        let zero_price_err = _create_order(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            token_id.clone(),
+            nft_address.clone(),
+            zeroprice.clone(),
+            expiration
+        ).unwrap_err();
+        assert_eq!(zero_price_err, ContractError::InvalidPrice {});
+
+        let expired_err = _create_order(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            token_id.clone(),
+            nft_address.clone(),
+            price.clone(),
+            expired_expiration
+        ).unwrap_err();
+        assert_eq!(expired_err, ContractError::InvalidExpiration {});
 
         let res = _create_order(
             deps.as_mut(),
