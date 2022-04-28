@@ -30,11 +30,10 @@ pub struct Config {
   pub owner: Addr,
   pub accepted_token: Addr,
   pub owner_cut_rate: Decimal,
-  pub owner_cut_rate_max: Decimal
+  pub owner_cut_rate_max: Decimal,
+  pub paused: bool
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
-pub const PAUSED: Item<bool> = Item::new("pasused");
-
 pub const ORDERS: Map<(&str, &str), Order> = Map::new("orders");
 pub const BIDS: Map<(&str, &str), Bid> = Map::new("bids");

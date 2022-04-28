@@ -25,8 +25,8 @@ import fetch from 'isomorphic-fetch';
 		let timeStamp = Math.floor(Date.now() / 1000 ) + 3600 * 24 * 7
 		console.log('timeStamp', timeStamp)
 		const expire_at = {
-				// "at_time": "1668544526734254325", // 19 digits format
-				"never": {}
+				"at_time": timeStamp.toString(),
+				// "never": {}
 		},
 		price = {
 			"amount": "200", //0.000001 Luna
@@ -35,36 +35,18 @@ import fetch from 'isomorphic-fetch';
 			}
 		}
 
-		const mintMsg = {
-       mint: {
-         name: "coderighter2-nft",
-         owner: wallet.key.accAddress,
-         token_id: "3",
-         description: "This is for nft market place testing-0424",
-         image: ""
-       }
-     }
-
-		const increase = new MsgExecuteContract(
-			wallet.key.accAddress, // sender
-			// contract_address[0], // contract account address,
-			"terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju",
-			mintMsg
-    )
-
-		// const createOrderMsg = { create_order: { token_id: "1", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", price, expire_at } }
+		const setPausedMsg = {set_paused: {paused: false}}
+		const createOrderMsg = { create_order: { token_id: "2", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", price, expire_at } }
 		// const cancelOrderMsg = { cancel_order: { token_id: "1", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju" } }
 		// const exeOrderMsg = { execute_order: { token_id: "1", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju" } }
 
 		// const createBidMsg = { create_bid: { token_id: "1", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", price, expire_at } }
 		// const cancelBidMsg = { cancel_bid: { token_id: "1", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju" } }
-
-		// const increase = new MsgExecuteContract(
-		// 	wallet.key.accAddress, // sender
-		// 	// contract_address[0], // contract account address,
-		// 	"terra1vfas6tt3tsdnzqy42g7u0my68gln4ep9n34w5u",
-		// 	exeOrderMsg
-		// )
+		const increase = new MsgExecuteContract(
+			wallet.key.accAddress, // sender
+			info.MARKET_PLACE_ADDRESS,
+			createOrderMsg
+		)
 		const increaseTx = await wallet.createAndSignTx({
 			msgs: [increase]
 		})

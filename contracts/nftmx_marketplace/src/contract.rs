@@ -9,7 +9,7 @@ use cosmwasm_std::{
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw0:: Expiration;
 
-use crate::state::{ ORDERS, Order, BIDS, Bid, Config, CONFIG, PAUSED };
+use crate::state::{ ORDERS, Order, BIDS, Bid, Config, CONFIG };
 use crate::msg::{ ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg };
 use crate::asset::{ Asset };
 
@@ -25,8 +25,11 @@ pub fn instantiate(
         accepted_token: deps.api.addr_validate(&msg.accepted_token)?,
         owner_cut_rate: msg.owner_cut_rate,
         owner_cut_rate_max: Decimal::percent(10),
+        paused: false
     };
     CONFIG.save(deps.storage, &con)?;
+    // let paused = false;
+    // PAUSED.save(deps.storage, &paused)?;
     Ok(Response::default())
 }
 
@@ -54,7 +57,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Version {} => {
             // let seconds = env.block.time;
-            to_binary(&"1.72".to_string())
+            to_binary(&"1.1".to_string())
         }
 
         QueryMsg::ValidOrder { token_id, nft_address } => {
@@ -74,10 +77,13 @@ pub fn set_paused(
     _info: MessageInfo,
     paused: bool,
 ) -> Result<Response, ContractError> {
-    PAUSED.save(deps.storage, &paused)?;
+    let output = CONFIG.update(deps.storage, |mut c| -> StdResult<_> {
+        c.paused = paused;
+        Ok(c)
+    })?;
     Ok(Response::new()
         .add_attribute("action", "set_paused")
-        .add_attribute("paused", paused.to_string())
+        .add_attribute("paused", output.paused.to_string())
     )
 }
 
@@ -90,17 +96,18 @@ pub fn create_order(
     price: Asset,
     expire_at: Expiration
 ) -> Result<Response, ContractError> {
-    if PAUSED.load(deps.storage)? {
+    let con = CONFIG.load(deps.storage)?;
+    if con.paused {
         return Err(ContractError:: MarketplacePaused{});
     }
-    let owner_res: OwnerOfResponse =
-    deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: nft_address.clone(),
-        msg: to_binary(&Cw721QueryMsg::OwnerOf { token_id: token_id.clone(), include_expired: std::option::Option::default() })?,
-    })).unwrap();
-    if owner_res.owner != info.sender.to_string() {
-        return Err(ContractError::NoOwner {})
-    }
+    // let owner_res: OwnerOfResponse =
+    // deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+    //     contract_addr: nft_address.clone(),
+    //     msg: to_binary(&Cw721QueryMsg::OwnerOf { token_id: token_id.clone(), include_expired: Some(false) })?,
+    // })).unwrap();
+    // if owner_res.owner != info.sender.to_string() {
+    //     return Err(ContractError::NoOwner {})
+    // }
     let res = _create_order(deps, env, info, token_id, nft_address, price, expire_at).unwrap();
     Ok(res)
 }
@@ -114,7 +121,8 @@ pub fn update_order(
     price: Asset,
     expire_at: Expiration
 ) -> Result<Response, ContractError> {
-    if PAUSED.load(deps.storage)? {
+    let con = CONFIG.load(deps.storage)?;
+    if con.paused {
         return Err(ContractError:: MarketplacePaused{});
     }
     let res = _update_order(deps, env, info, token_id, nft_address, price, expire_at).unwrap();
@@ -128,7 +136,8 @@ pub fn cancel_order(
     token_id: String,
     nft_address: String
 ) -> Result<Response, ContractError> {
-    if PAUSED.load(deps.storage)? {
+    let con = CONFIG.load(deps.storage)?;
+    if con.paused {
         return Err(ContractError:: MarketplacePaused{});
     }
     let res = _cancel_order(deps, env, info, token_id, nft_address).unwrap();
@@ -143,7 +152,8 @@ pub fn safe_execute_order(
     nft_address: String,
     price: Asset
 ) -> Result<Response, ContractError> {
-    if PAUSED.load(deps.storage)? {
+    let con = CONFIG.load(deps.storage)?;
+    if con.paused {
         return Err(ContractError:: MarketplacePaused{});
     }
     let res = _safe_execute_order(deps, env, info, token_id, nft_address, price).unwrap();
@@ -160,7 +170,8 @@ pub fn create_bid(
     price: Asset,
     expire_at: Expiration
 ) -> Result<Response, ContractError> {
-    if PAUSED.load(deps.storage)? {
+    let con = CONFIG.load(deps.storage)?;
+    if con.paused {
         return Err(ContractError:: MarketplacePaused{});
     }
     let res = _create_bid(deps, env, info, token_id, nft_address, price, expire_at).unwrap();
@@ -175,7 +186,8 @@ pub fn accept_bid(
     nft_address: String,
     price: Asset
 ) -> Result<Response, ContractError> {
-    if PAUSED.load(deps.storage)? {
+    let con = CONFIG.load(deps.storage)?;
+    if con.paused {
         return Err(ContractError:: MarketplacePaused{});
     }
     let res = _accept_bid(deps, env, info, token_id, nft_address, price).unwrap();
@@ -189,7 +201,8 @@ pub fn cancel_bid(
     token_id: String,
     nft_address: String
 ) -> Result<Response, ContractError> {
-    if PAUSED.load(deps.storage)? {
+    let con = CONFIG.load(deps.storage)?;
+    if con.paused {
         return Err(ContractError:: MarketplacePaused{});
     }
     let mut messages: Vec<CosmosMsg> = vec![];
@@ -214,13 +227,15 @@ fn _create_order(
     if price.amount <= Uint128::zero() {
         return Err(ContractError::InvalidPrice {})
     }
+    let mut expire_at_str: String = "testing".to_string();
     match expire_at {
         Expiration::AtHeight(_) => {},
         Expiration::AtTime(time) => {
-            let seconds = env.block.time.seconds();
-            if time.seconds() < seconds + 60u64 {
-                return Err(ContractError::InvalidExpiration {})
-            }
+            expire_at_str = time.seconds().to_string();
+            // let seconds = env.block.time.seconds();
+            // if time.seconds() < seconds + 60u64 {
+            //     return Err(ContractError::InvalidExpiration {})
+            // }
         },
         Expiration::Never {} => {},
     }
@@ -230,7 +245,7 @@ fn _create_order(
         nft_address: deps.api.addr_validate(&nft_address)?,
         seller: deps.api.addr_validate(info.sender.as_str())?,
         price: price,
-        expire_at: expire_at
+        expire_at: expire_at.clone()
     };
     ORDERS.save(deps.storage, (&token_id, &nft_address), &order)?;
     Ok(Response::new()
@@ -238,6 +253,7 @@ fn _create_order(
         .add_attribute("token_id", order.token_id)
         .add_attribute("nft_address", order.nft_address)
         .add_attribute("seller", order.seller)
+        .add_attribute("expire_at", expire_at_str)
         .add_attribute("price", order.price.amount)
     )
 }
