@@ -28,8 +28,6 @@ pub fn instantiate(
         paused: false
     };
     CONFIG.save(deps.storage, &con)?;
-    // let paused = false;
-    // PAUSED.save(deps.storage, &paused)?;
     Ok(Response::default())
 }
 
@@ -100,14 +98,14 @@ pub fn create_order(
     if con.paused {
         return Err(ContractError:: MarketplacePaused{});
     }
-    // let owner_res: OwnerOfResponse =
-    // deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-    //     contract_addr: nft_address.clone(),
-    //     msg: to_binary(&Cw721QueryMsg::OwnerOf { token_id: token_id.clone(), include_expired: Some(false) })?,
-    // })).unwrap();
-    // if owner_res.owner != info.sender.to_string() {
-    //     return Err(ContractError::NoOwner {})
-    // }
+    let owner_res: OwnerOfResponse =
+    deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: nft_address.clone(),
+        msg: to_binary(&Cw721QueryMsg::OwnerOf { token_id: token_id.clone(), include_expired: Some(false) })?,
+    })).unwrap();
+    if owner_res.owner != info.sender.to_string() {
+        return Err(ContractError::NoOwner {})
+    }
     let res = _create_order(deps, env, info, token_id, nft_address, price, expire_at).unwrap();
     Ok(res)
 }
@@ -159,7 +157,6 @@ pub fn safe_execute_order(
     let res = _safe_execute_order(deps, env, info, token_id, nft_address, price).unwrap();
     Ok(res)
 }
-
 
 pub fn create_bid(
     deps: DepsMut,
