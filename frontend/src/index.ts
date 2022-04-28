@@ -36,7 +36,7 @@ import fetch from 'isomorphic-fetch';
 		}
 
 		const setPausedMsg = {set_paused: {paused: false}}
-		const createOrderMsg = { create_order: { token_id: "2", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", price, expire_at } }
+		const createOrderMsg = { create_order: { token_id: "2", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", price, expire_at: timeStamp } }
 		// const cancelOrderMsg = { cancel_order: { token_id: "1", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju" } }
 		// const exeOrderMsg = { execute_order: { token_id: "1", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju" } }
 

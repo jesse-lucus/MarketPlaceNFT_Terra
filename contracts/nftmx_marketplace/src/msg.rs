@@ -25,9 +25,9 @@ pub struct OrderMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     SetPaused { paused: bool },
-    CreateOrder { token_id:String, nft_address: String, price: Asset, expire_at: Expiration },
-    UpdateOrder { token_id:String, nft_address: String, price: Asset, expire_at: Expiration },
-    CreateBid { token_id:String, nft_address: String, price: Asset, expire_at: Expiration },
+    CreateOrder { token_id:String, nft_address: String, price: Asset, expire_at: u64 },
+    UpdateOrder { token_id:String, nft_address: String, price: Asset, expire_at: u64 },
+    CreateBid { token_id:String, nft_address: String, price: Asset, expire_at: u64 },
     CancelOrder { token_id:String, nft_address: String },
     CancelBid { token_id:String, nft_address: String },
     SafeExecuteOrder { token_id:String, nft_address: String, price: Asset },

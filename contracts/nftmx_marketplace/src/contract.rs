@@ -94,7 +94,7 @@ pub fn create_order(
     token_id: String,
     nft_address: String,
     price: Asset,
-    expire_at: Expiration
+    expire_at: u64
 ) -> Result<Response, ContractError> {
     let con = CONFIG.load(deps.storage)?;
     if con.paused {
@@ -119,7 +119,7 @@ pub fn update_order(
     token_id: String,
     nft_address: String,
     price: Asset,
-    expire_at: Expiration
+    expire_at: u64
 ) -> Result<Response, ContractError> {
     let con = CONFIG.load(deps.storage)?;
     if con.paused {
@@ -168,7 +168,7 @@ pub fn create_bid(
     token_id: String,
     nft_address: String,
     price: Asset,
-    expire_at: Expiration
+    expire_at: u64
 ) -> Result<Response, ContractError> {
     let con = CONFIG.load(deps.storage)?;
     if con.paused {
@@ -222,23 +222,15 @@ fn _create_order(
     token_id: String,
     nft_address: String,
     price: Asset,
-    expire_at: Expiration
+    expire_at: u64
 ) -> Result<Response, ContractError> {
     if price.amount <= Uint128::zero() {
         return Err(ContractError::InvalidPrice {})
     }
-    let mut expire_at_str: String = "testing".to_string();
-    match expire_at {
-        Expiration::AtHeight(_) => {},
-        Expiration::AtTime(time) => {
-            expire_at_str = time.seconds().to_string();
-            // let seconds = env.block.time.seconds();
-            // if time.seconds() < seconds + 60u64 {
-            //     return Err(ContractError::InvalidExpiration {})
-            // }
-        },
-        Expiration::Never {} => {},
+    if expire_at < env.block.time.seconds() + 60u64 {
+        return Err(ContractError::InvalidExpiration {});
     }
+    let time_str = env.block.time.seconds().to_string();
     //get NFT asset to seller - should be called from frontend
     let order = Order {
         token_id: token_id.clone(),
@@ -253,7 +245,7 @@ fn _create_order(
         .add_attribute("token_id", order.token_id)
         .add_attribute("nft_address", order.nft_address)
         .add_attribute("seller", order.seller)
-        .add_attribute("expire_at", expire_at_str)
+        .add_attribute("expire_at", time_str)
         .add_attribute("price", order.price.amount)
     )
 }
@@ -265,18 +257,11 @@ fn _create_bid(
     token_id: String,
     nft_address: String,
     price: Asset,
-    expire_at: Expiration
+    expire_at: u64
 ) -> Result<Response, ContractError> {
     let order = ORDERS.load(deps.storage, (&token_id, &nft_address))?;
-    match order.expire_at {
-        Expiration::AtHeight(_) => {},
-        Expiration::AtTime(time) => {
-            let seconds = env.block.time.seconds();
-            if time.seconds() < seconds {
-                return Err(ContractError::Expired {});
-            }
-        },
-        Expiration::Never {} => {},
+    if expire_at < env.block.time.seconds() {
+        return Err(ContractError::Expired {});
     }
 
     if order.price.amount > price.amount {
@@ -287,21 +272,14 @@ fn _create_bid(
     let has_bid = BIDS.has(deps.storage, (&token_id, &nft_address));
     if has_bid {
         let bid = BIDS.load(deps.storage, (&token_id, &nft_address))?;
-        match bid.expire_at {
-            Expiration::AtHeight(_) => {},
-            Expiration::AtTime(time) => {
-                let seconds = env.block.time.seconds();
-                if time.seconds() < seconds {
-                    if price.amount <= Uint128::zero() {
-                        return Err(ContractError::ZeroBidAmount {});
-                    }            
-                } else {
-                    if price.amount < bid.price.amount {
-                        return Err(ContractError::InvalidBidAmount {});
-                    }
-                }
-            },
-            Expiration::Never {} => {},
+        if bid.expire_at < env.block.time.seconds() {
+            if price.amount <= Uint128::zero() {
+                return Err(ContractError::ZeroBidAmount {});
+            }            
+        } else {
+            if price.amount < bid.price.amount {
+                return Err(ContractError::InvalidBidAmount {});
+            }
         }
         messages.push(_cancel_bid(deps.storage, &deps.querier, token_id.clone(), nft_address.clone()).unwrap())
     } else {
@@ -380,7 +358,7 @@ fn _update_order(
     token_id: String,
     nft_address: String,
     price: Asset,
-    expire_at: Expiration
+    expire_at: u64
     
 ) -> Result<Response, ContractError> {
 
@@ -388,28 +366,14 @@ fn _update_order(
         return Err(ContractError::NoOrder {});
     }
     let mut order = ORDERS.load(deps.storage, (&token_id, &nft_address))?;
-    match order.expire_at {
-        Expiration::AtHeight(_) => {},
-        Expiration::AtTime(time) => {
-            let seconds = env.block.time.seconds();
-            if time.seconds() < seconds {
-                return Err(ContractError::Expired {});
-            } 
-        },
-        Expiration::Never {} => {},
-    }
+    if order.expire_at < env.block.time.seconds() {
+        return Err(ContractError::Expired {});
+    } 
     if price.amount <= Uint128::zero() {
-        return Err(ContractError::InvalidPrice {})
+        return Err(ContractError::InvalidPrice {});
     }
-    match expire_at {
-        Expiration::AtHeight(_) => {},
-        Expiration::AtTime(time) => {
-            let seconds = env.block.time.seconds();
-            if time.seconds() < seconds + 60u64 {
-                return Err(ContractError::InvalidExpiration {})
-            }
-        },
-        Expiration::Never {} => {},
+    if expire_at < env.block.time.seconds() + 60u64 {
+        return Err(ContractError::InvalidExpiration {});
     }
     // only seller update order
     if order.seller != info.sender {
@@ -510,16 +474,9 @@ fn _accept_bid(
     if order.seller != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-    match order.expire_at {
-        Expiration::AtHeight(_) => {},
-        Expiration::AtTime(time) => {
-            let seconds = env.block.time.seconds();
-            if time.seconds() < seconds {
-                return Err(ContractError::Expired {})
-            }
-        },
-        Expiration::Never {} => {},
-    }    
+    if order.expire_at < env.block.time.seconds() {
+        return Err(ContractError::Expired {})
+    }
 
     if !BIDS.has(deps.storage, (&token_id, &nft_address)) {
         return Err(ContractError::NoBid {});
@@ -532,18 +489,9 @@ fn _accept_bid(
     if bid.price.info != price.info || bid.price.amount != price.amount {
         return Err(ContractError::InvalidPrice {});
     }
-
-    match bid.expire_at {
-        Expiration::AtHeight(_) => {},
-        Expiration::AtTime(time) => {
-            let seconds = env.block.time.seconds();
-            if time.seconds() < seconds {
-                return Err(ContractError::BidExpired {})
-            }
-        },
-        Expiration::Never {} => {},
+    if bid.expire_at < env.block.time.seconds() {
+        return Err(ContractError::BidExpired {})
     }
-
 
     let mut messages: Vec<CosmosMsg> = vec![];
 
@@ -615,8 +563,8 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let info = mock_info(&"signer".to_string(), &[]);
         let env = mock_env();
-        let expiration = Expiration::AtTime(Timestamp::from_seconds(1648958996));
-        let expired_expiration = Expiration::AtTime(env.block.time);
+        let expiration = 1648958996u64;
+        let expired_expiration = env.block.time;
 
         let price = Asset {
             amount: Uint128::from(10000u128),

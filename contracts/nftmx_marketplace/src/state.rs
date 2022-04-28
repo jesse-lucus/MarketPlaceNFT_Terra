@@ -12,7 +12,7 @@ pub struct Order {
     pub nft_address: Addr,
     pub seller: Addr,
     pub price: Asset,
-    pub expire_at: Expiration
+    pub expire_at: u64
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -22,7 +22,7 @@ pub struct Bid {
     pub seller: Addr,
     pub bidder: Addr,
     pub price: Asset,
-    pub expire_at: Expiration
+    pub expire_at: u64
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq)]
