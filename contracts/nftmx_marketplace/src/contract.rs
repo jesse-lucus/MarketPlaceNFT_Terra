@@ -58,11 +58,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&"1.1".to_string())
         }
 
-        QueryMsg::ValidOrder { token_id, nft_address } => {
+        QueryMsg::GetOrder { token_id, nft_address } => {
             let order = ORDERS.load(deps.storage, (&token_id, &nft_address))?;
             to_binary(&order)
         }
-        QueryMsg::ValidBid { token_id, nft_address } => {
+        QueryMsg::GetBid { token_id, nft_address } => {
             let bid = BIDS.load(deps.storage, (&token_id, &nft_address))?;
             to_binary(&bid)
         }
@@ -284,7 +284,6 @@ fn _create_bid(
             return Err(ContractError::ZeroBidAmount {});
         }
     }
-
     //Transfer sale amount from bidder escrow- should be done from coin params on execution
     let bid = Bid {
         token_id: token_id.clone(),
@@ -561,7 +560,7 @@ mod tests {
         let info = mock_info(&"signer".to_string(), &[]);
         let env = mock_env();
         let expiration = 1648958996u64;
-        let expired_expiration = env.block.time;
+        let expired_expiration = env.block.time.seconds();
 
         let price = Asset {
             amount: Uint128::from(10000u128),
@@ -614,39 +613,4 @@ mod tests {
             .add_attribute("price", price.amount)
         );
     }
-
-    // #[test]
-    // fn _create_bid_works() {
-    //     let mut deps = mock_dependencies(&[]);
-    //     let expiration = Expiration::AtTime(Timestamp::from_seconds(1648938996));
-
-    //     let price = Asset {
-    //         amount: Uint128::from(10000u128),
-    //         info: AssetInfo::NativeToken {denom : "uluna".to_string()}
-    //     };
-
-    //     let order_res = _create_order(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         mock_info(&"signer".to_string(), &[]),
-    //         "47850".to_string(),
-    //         "terra13rxnrpjk5l8c77zsdzzq63zmavu03hwn532wn0".to_string(),
-    //         price.clone(),
-    //         expiration.clone()
-    //     ).unwrap();
-    //     assert_eq!(0, order_res.messages.len());
-
-
-    //     let res = _create_bid(
-    //         deps.as_mut(),
-    //         mock_env(),
-    //         mock_info(&"signer".to_string(), &[]),
-    //         "47850".to_string(),
-    //         "terra13rxnrpjk5l8c77zsdzzq63zmavu03hwn532wn0".to_string(),
-    //         price,
-    //         expiration
-    //     ).unwrap();
-    //     assert_eq!(0, res.messages.len());
-    // }
-
 }

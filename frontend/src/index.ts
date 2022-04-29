@@ -3,6 +3,7 @@ import {
   MnemonicKey,
   MsgExecuteContract,
   Coins,
+	Coin
 } from "@terra-money/terra.js";
 import info from "./constant";
 import fetch from 'isomorphic-fetch';
@@ -29,23 +30,50 @@ import fetch from 'isomorphic-fetch';
 				// "never": {}
 		},
 		price = {
-			"amount": "200", //0.000001 Luna
+			"amount": "10000", //0.000001 Luna
+			"info": {
+				"native_token": {"denom": "uluna"}
+			}
+		},
+		bid_price = {
+			"amount": "10000", //0.000001 Luna
 			"info": {
 				"native_token": {"denom": "uluna"}
 			}
 		}
 
+
 		const setPausedMsg = {set_paused: {paused: false}}
 		const createOrderMsg = { create_order: { token_id: "2", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", price, expire_at: timeStamp } }
-		// const cancelOrderMsg = { cancel_order: { token_id: "1", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju" } }
+
+		// Transfer NFT to smart contract address on createOrder
+		//     transfer nft to market place contracts
+    // const transferNftMsg = {transfer_nft : {recipient: info.MARKET_PLACE_ADDRESS, token_id: "2"}}
+    // const increase = new MsgExecuteContract(
+		// 	wallet.key.accAddress, // sender
+		// 	info.TEST_NFT_ADDR,
+		// 	transferNftMsg
+    // )
+
+
+		const updateOrderMsg = { update_order: { token_id: "2", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", price, expire_at: timeStamp } }
+	
+		const createBidMsg = { create_bid: { token_id: "2", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", price, expire_at: timeStamp } }
+		const createBidCoin = new Coin("uluna", 10000)
+
+		const cancelBidMsg = { cancel_bid: { token_id: "2", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju" } }
+		const cancelOrderMsg = { cancel_order: { token_id: "2", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju" } }
+
 		// const exeOrderMsg = { execute_order: { token_id: "1", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju" } }
 
-		// const createBidMsg = { create_bid: { token_id: "1", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", price, expire_at } }
-		// const cancelBidMsg = { cancel_bid: { token_id: "1", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju" } }
+		// const acceptBidMsg = { accept_bid: { token_id: "2", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", bid_price } }
+		// const acceptBidCoin = new Coin("uluna", 10000)
+
 		const increase = new MsgExecuteContract(
 			wallet.key.accAddress, // sender
 			info.MARKET_PLACE_ADDRESS,
 			createOrderMsg
+			// [acceptBidCoin] // send coint to 
 		)
 		const increaseTx = await wallet.createAndSignTx({
 			msgs: [increase]
