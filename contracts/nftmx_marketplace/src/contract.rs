@@ -55,7 +55,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Version {} => {
             // let seconds = env.block.time;
-            to_binary(&"1.1".to_string())
+            to_binary(&"1.2".to_string())
         }
 
         QueryMsg::GetOrder { token_id, nft_address } => {
@@ -377,6 +377,7 @@ fn _update_order(
     }
     order.price = price.clone();
     order.expire_at = expire_at.clone();
+    ORDERS.save(deps.storage, (&token_id, &nft_address), &order)?;   
     Ok(Response::new()
         .add_attribute("action", "update_order")
         .add_attribute("token_id", token_id)
