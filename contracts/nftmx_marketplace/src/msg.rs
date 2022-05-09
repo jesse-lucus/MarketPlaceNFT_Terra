@@ -39,6 +39,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     GetOrder { token_id: String, nft_address: String },
     GetBid { token_id: String, nft_address: String },
+    GetNftOwner { token_id: String, nft_address: String },
     Version {}
 }
 

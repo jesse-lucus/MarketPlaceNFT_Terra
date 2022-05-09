@@ -55,7 +55,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Version {} => {
             // let seconds = env.block.time;
-            to_binary(&"1.2".to_string())
+            to_binary(&"1.3".to_string())
         }
 
         QueryMsg::GetOrder { token_id, nft_address } => {
@@ -65,6 +65,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetBid { token_id, nft_address } => {
             let bid = BIDS.load(deps.storage, (&token_id, &nft_address))?;
             to_binary(&bid)
+        },
+        QueryMsg::GetNftOwner { token_id, nft_address } => {
+            let owner_res: OwnerOfResponse =
+            deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: nft_address.clone(),
+                msg: to_binary(&Cw721QueryMsg::OwnerOf { token_id: token_id.clone(), include_expired: Some(false) })?,
+            })).unwrap();
+            to_binary(&owner_res)
         }
     }
 }
