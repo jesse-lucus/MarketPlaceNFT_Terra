@@ -36,7 +36,7 @@ import fetch from 'isomorphic-fetch';
 			}
 		},
 		bid_price = {
-			"amount": "10000", //0.000001 Luna
+			"amount": "2000", //0.000001 Luna
 			"info": {
 				"native_token": {"denom": "uluna"}
 			}
@@ -48,13 +48,12 @@ import fetch from 'isomorphic-fetch';
 
 		// Transfer NFT to smart contract address on createOrder
 		//     transfer nft to market place contracts
-    // const transferNftMsg = {transfer_nft : {recipient: info.MARKET_PLACE_ADDRESS, token_id: "2"}}
+    const transferNftMsg = {transfer_nft : {recipient: "terra1nxn92p56sfyfds790vgxqannux775ysha7cc75", token_id: "2"}}
     // const increase = new MsgExecuteContract(
 		// 	wallet.key.accAddress, // sender
 		// 	info.TEST_NFT_ADDR,
 		// 	transferNftMsg
     // )
-
 
 		const updateOrderMsg = { update_order: { token_id: "2", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", price, expire_at: timeStamp } }
 	
@@ -66,13 +65,13 @@ import fetch from 'isomorphic-fetch';
 
 		// const exeOrderMsg = { execute_order: { token_id: "1", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju" } }
 
-		// const acceptBidMsg = { accept_bid: { token_id: "2", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", bid_price } }
+		const acceptBidMsg = { accept_bid: { token_id: "2", nft_address: "terra1rmw87h769rt553myzcvnqavvnqzqxm2r9twsju", price: bid_price } }
 		// const acceptBidCoin = new Coin("uluna", 10000)
 
 		const increase = new MsgExecuteContract(
 			wallet.key.accAddress, // sender
 			info.MARKET_PLACE_ADDRESS,
-			createOrderMsg
+			acceptBidMsg
 			// [acceptBidCoin] // send coint to 
 		)
 		const increaseTx = await wallet.createAndSignTx({
@@ -87,4 +86,3 @@ import fetch from 'isomorphic-fetch';
 		console.log(e)
 	}
 })();
-

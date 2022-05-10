@@ -55,7 +55,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Version {} => {
             // let seconds = env.block.time;
-            to_binary(&"1.3".to_string())
+            to_binary(&"1.4".to_string())
         }
 
         QueryMsg::GetOrder { token_id, nft_address } => {
@@ -421,6 +421,9 @@ fn _safe_execute_order(
     if order.price.info != price.info || order.price.amount != price.amount {
         return Err(ContractError::InvalidPrice {});
     }
+    if order.seller == info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
     // Transfer all amount by coin param on calling
     // it should be performed from frontend by coin params.
     let mut messages: Vec<CosmosMsg> = vec![];
@@ -453,6 +456,7 @@ fn _safe_execute_order(
     );
     ORDERS.remove(deps.storage, (&token_id, &nft_address));
     Ok(Response::new()
+        .add_messages(messages)
         .add_attribute("action", "_safe_execute_order")
         .add_attribute("token_id", token_id)
         .add_attribute("nft_address", nft_address)
@@ -522,7 +526,7 @@ fn _accept_bid(
     ORDERS.remove(deps.storage, (&token_id, &nft_address));
     Ok(Response::new()
         .add_messages(messages)
-        .add_attribute("action", "execute_order")
+        .add_attribute("action", "accept_order")
         .add_attribute("token_id", order.token_id)
         .add_attribute("nft_address", order.nft_address)
         .add_attribute("seller", order.seller.clone())
